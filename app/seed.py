@@ -41,47 +41,47 @@ COURSE_MEDIA = {
         "title": "Jobsite Skills & Safety Training",
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/safety-training.svg",
-        "image": "/images/jobs-hero.jpg",
+        "image": "/programs/training-jobsite-us.jpg",
     },
     "Jobsite Skills & Safety Training": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/safety-training.svg",
-        "image": "/images/jobs-hero.jpg",
+        "image": "/programs/training-jobsite-us.jpg",
     },
     "Blueprint Reading & Construction Estimating": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/blueprint.svg",
-        "image": "/programs/blueprint-estimating.jpg",
+        "image": "/programs/training-blueprint-us.jpg",
     },
     "Heavy Equipment Operator Training": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/heavy-equipment.svg",
-        "image": "/programs/heavy-equipment.jpg",
+        "image": "/programs/training-heavy-equipment-us.jpg",
     },
     "Construction Safety Fundamentals (OSHA 10 Equivalent)": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/osha-safety.svg",
-        "image": "/programs/safety-fundamentals.jpg",
+        "image": "/programs/safety-fundamentals-us.jpg",
     },
     "Basic Jobsite Safety Orientation": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/orientation.svg",
-        "image": "/illustrations/orientation.svg",
+        "image": "/programs/training-orientation-us.jpg",
     },
     "Hand & Power Tool Safety": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/tools.svg",
-        "image": "/illustrations/tools.svg",
+        "image": "/programs/training-tools-us.jpg",
     },
     "PPE & Hazard Awareness": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/ppe.svg",
-        "image": "/illustrations/ppe.svg",
+        "image": "/programs/training-ppe-safety-us.jpg",
     },
     "Ladder & Fall Prevention Basics": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/ladder.svg",
-        "image": "/illustrations/ladder.svg",
+        "image": "/programs/training-ladder-us.jpg",
     },
 }
 
