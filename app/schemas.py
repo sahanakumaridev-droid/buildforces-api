@@ -29,6 +29,9 @@ class SelectedTrade(BaseModel):
     category: str
     trade_name: str
 
+    class Config:
+        from_attributes = True
+
 
 class RegistrationCreate(BaseModel):
     full_name: str = Field(min_length=1, max_length=200)
@@ -38,8 +41,6 @@ class RegistrationCreate(BaseModel):
 
     language: str
     zip_code: str = Field(min_length=1)
-    state: Optional[str] = None
-    county: Optional[str] = None
     promo_code: Optional[str] = None
 
     trades: List[SelectedTrade] = Field(min_length=1)
@@ -71,3 +72,212 @@ class RegistrationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class RegistrationLookup(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class DocumentOut(BaseModel):
+    id: int
+    doc_type: str
+    original_filename: str
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class RegistrationDetail(RegistrationOut):
+    trades: List[SelectedTrade]
+    documents: List[DocumentOut] = []
+
+
+class RegistrationAuthResponse(BaseModel):
+    token: str
+    registration: RegistrationDetail
+
+
+class EmployerCreate(BaseModel):
+    company_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(min_length=6)
+
+
+class EmployerLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class EmployerOut(BaseModel):
+    id: int
+    company_name: str
+    email: EmailStr
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class EmployerAuthResponse(BaseModel):
+    token: str
+    employer: EmployerOut
+
+
+class AdminOut(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AuthLogin(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AuthUserOut(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+    role: str
+
+
+class AuthResponse(BaseModel):
+    token: str
+    role: str
+    user: AuthUserOut
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_url: Optional[str] = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=6)
+
+
+class JobOut(BaseModel):
+    id: int
+    title: str
+    agency: str
+    trade_category: str
+    skills: List[str]
+    city: str
+    zip_code: str
+    pay_min: Optional[float]
+    pay_max: Optional[float]
+    employment_type: str
+    min_experience_years: int
+    summary: str
+    posted_at: datetime
+    apply_url: str
+    match_score: Optional[float] = None
+    matched_skills: Optional[List[str]] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CourseSessionOut(BaseModel):
+    id: int
+    course_id: int
+    title: str
+    starts_at: datetime
+    ends_at: datetime
+    location: str
+    seats_left: int
+    course_title: Optional[str] = None
+    course_image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CourseOut(BaseModel):
+    id: int
+    title: str
+    description: str
+    fee: float
+    duration: str
+    level: str
+    category: str
+    provider: str
+    location: str
+    image: Optional[str]
+    outcomes: List[str]
+    video_url: Optional[str] = None
+    illustration: Optional[str] = None
+    purchased: bool = False
+    sessions: List[CourseSessionOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+class EnrollmentOut(BaseModel):
+    id: int
+    course_id: int
+    status: str
+    enrolled_at: datetime
+    course: CourseOut
+
+    class Config:
+        from_attributes = True
+
+
+class AdminStatsOut(BaseModel):
+    members: int
+    instructors: int
+    house_owners: int
+    employers: int
+    admins: int
+    courses: int
+    enrollments: int
+    jobs: int
+
+
+class AdminMemberOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone: str
+    zip_code: str
+    skill_level: str
+    experience: str
+    trades: List[str]
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AdminDirectoryUserOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    role: str
+    detail: str
+    city: Optional[str] = None
+    created_at: datetime
+    is_active: bool = True
+
+
+class AdminOverviewOut(BaseModel):
+    stats: AdminStatsOut
+    members: List[AdminMemberOut]
+    instructors: List[AdminDirectoryUserOut]
+    house_owners: List[AdminDirectoryUserOut]
+    employers: List[AdminDirectoryUserOut]
+    admins: List[AdminDirectoryUserOut]
+    recent_enrollments: List[dict]

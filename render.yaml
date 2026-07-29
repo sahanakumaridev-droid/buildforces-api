@@ -3,10 +3,28 @@ services:
     name: buildforces-api
     runtime: python
     plan: free
+    region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
     envVars:
+      - key: PYTHON_VERSION
+        value: "3.11.9"
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: buildforces-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
       - key: CORS_ORIGINS
         sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: ENV
+        value: production
+
+databases:
+  - name: buildforces-db
+    plan: free
+    databaseName: buildforces
+    user: buildforces
