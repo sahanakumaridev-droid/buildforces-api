@@ -47,6 +47,7 @@ class RegistrationCreate(BaseModel):
 
     skill_level: str
     experience: str
+    work_authorized: bool
     agreed_to_terms: bool
 
     @field_validator("agreed_to_terms")
@@ -54,6 +55,13 @@ class RegistrationCreate(BaseModel):
     def must_agree_to_terms(cls, value: bool) -> bool:
         if not value:
             raise ValueError("Terms and Privacy Policy must be accepted.")
+        return value
+
+    @field_validator("work_authorized")
+    @classmethod
+    def must_be_work_authorized(cls, value: bool) -> bool:
+        if not value:
+            raise ValueError("You must be authorized to work in the USA to register.")
         return value
 
 
@@ -68,6 +76,7 @@ class RegistrationOut(BaseModel):
     county: Optional[str]
     skill_level: str
     experience: str
+    work_authorized: bool = False
     created_at: datetime
 
     class Config:
@@ -138,6 +147,13 @@ class AdminOut(BaseModel):
 class AuthLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class AdminRegister(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(min_length=6)
+    invite_code: str = Field(min_length=1, max_length=100)
 
 
 class AuthUserOut(BaseModel):

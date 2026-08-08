@@ -37,6 +37,7 @@ class Registration(Base):
 
     skill_level: Mapped[str] = mapped_column(String(50))
     experience: Mapped[str] = mapped_column(String(20))
+    work_authorized: Mapped[bool] = mapped_column(Boolean, default=False)
     agreed_to_terms: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -188,6 +189,7 @@ class Instructor(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     specialty: Mapped[str] = mapped_column(String(150))
     city: Mapped[str] = mapped_column(String(100), default="California")
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
@@ -200,5 +202,6 @@ class HouseOwner(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     city: Mapped[str] = mapped_column(String(100), default="")
     project_count: Mapped[int] = mapped_column(Integer, default=0)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)

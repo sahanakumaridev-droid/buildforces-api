@@ -6,8 +6,9 @@ from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Admin, PasswordResetToken, Registration
+from app.models import Admin, HouseOwner, Instructor, PasswordResetToken, Registration
 from app.schemas import (
+    AdminRegister,
     AuthLogin,
     AuthResponse,
     AuthUserOut,
@@ -45,6 +46,24 @@ def _admin_user(admin: Admin) -> AuthUserOut:
     )
 
 
+def _instructor_user(instructor: Instructor) -> AuthUserOut:
+    return AuthUserOut(
+        id=instructor.id,
+        full_name=instructor.full_name,
+        email=instructor.email,
+        role="instructor",
+    )
+
+
+def _homeowner_user(homeowner: HouseOwner) -> AuthUserOut:
+    return AuthUserOut(
+        id=homeowner.id,
+        full_name=homeowner.full_name,
+        email=homeowner.email,
+        role="homeowner",
+    )
+
+
 def get_current_auth_user(
     authorization: str = Header(default=""), db: Session = Depends(get_db)
 ) -> AuthUserOut:
@@ -65,6 +84,26 @@ def get_current_auth_user(
         if not admin:
             raise HTTPException(status_code=401, detail="Not authenticated.")
         return _admin_user(admin)
+
+    if role == "instructor":
+        instructor = (
+            db.query(Instructor)
+            .filter(Instructor.id == user_id, Instructor.is_active.is_(True))
+            .first()
+        )
+        if not instructor:
+            raise HTTPException(status_code=401, detail="Not authenticated.")
+        return _instructor_user(instructor)
+
+    if role == "homeowner":
+        homeowner = (
+            db.query(HouseOwner)
+            .filter(HouseOwner.id == user_id, HouseOwner.is_active.is_(True))
+            .first()
+        )
+        if not homeowner:
+            raise HTTPException(status_code=401, detail="Not authenticated.")
+        return _homeowner_user(homeowner)
 
     raise HTTPException(status_code=401, detail="Not authenticated.")
 
@@ -87,7 +126,67 @@ def login(payload: AuthLogin, db: Session = Depends(get_db)):
         user = _labor_user(registration)
         return AuthResponse(token=create_auth_token(registration.id, "labor"), role="labor", user=user)
 
+    instructor = (
+        db.query(Instructor)
+        .filter(Instructor.email == payload.email, Instructor.is_active.is_(True))
+        .first()
+    )
+    if (
+        instructor
+        and instructor.password_hash
+        and verify_password(payload.password, instructor.password_hash)
+    ):
+        user = _instructor_user(instructor)
+        return AuthResponse(
+            token=create_auth_token(instructor.id, "instructor"),
+            role="instructor",
+            user=user,
+        )
+
+    homeowner = (
+        db.query(HouseOwner)
+        .filter(HouseOwner.email == payload.email, HouseOwner.is_active.is_(True))
+        .first()
+    )
+    if (
+        homeowner
+        and homeowner.password_hash
+        and verify_password(payload.password, homeowner.password_hash)
+    ):
+        user = _homeowner_user(homeowner)
+        return AuthResponse(
+            token=create_auth_token(homeowner.id, "homeowner"),
+            role="homeowner",
+            user=user,
+        )
+
     raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+
+@router.post("/admin/register", response_model=AuthResponse)
+def register_admin(payload: AdminRegister, db: Session = Depends(get_db)):
+    expected = os.environ.get("ADMIN_INVITE_CODE", "BuildForcesAdmin2026").strip()
+    if not expected or payload.invite_code.strip() != expected:
+        raise HTTPException(status_code=403, detail="Invalid admin invite code.")
+
+    email = payload.email.lower().strip()
+    if db.query(Admin).filter(Admin.email == email).first():
+        raise HTTPException(status_code=400, detail="An admin account with this email already exists.")
+    if db.query(Registration).filter(Registration.email == email).first():
+        raise HTTPException(status_code=400, detail="This email is already used by a Buildforces member.")
+
+    admin = Admin(
+        full_name=payload.full_name.strip(),
+        email=email,
+        password_hash=hash_password(payload.password),
+        is_active=True,
+    )
+    db.add(admin)
+    db.commit()
+    db.refresh(admin)
+
+    user = _admin_user(admin)
+    return AuthResponse(token=create_auth_token(admin.id, "admin"), role="admin", user=user)
 
 
 @router.get("/me", response_model=AuthUserOut)

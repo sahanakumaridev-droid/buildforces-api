@@ -34,6 +34,8 @@ def ensure_course_columns():
     with engine.begin() as conn:
         conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)"))
         conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE instructors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
+        conn.execute(text("ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
 
 
 COURSE_MEDIA = {
@@ -41,47 +43,53 @@ COURSE_MEDIA = {
         "title": "Jobsite Skills & Safety Training",
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/safety-training.svg",
-        "image": "/programs/training-jobsite-us.jpg",
+        "image": "/programs/training-jobsite-v2.jpg",
     },
     "Jobsite Skills & Safety Training": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/safety-training.svg",
-        "image": "/programs/training-jobsite-us.jpg",
+        "image": "/programs/training-jobsite-v2.jpg",
     },
     "Blueprint Reading & Construction Estimating": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/blueprint.svg",
-        "image": "/programs/training-blueprint-us.jpg",
+        "image": "/programs/training-blueprint-v2.jpg",
     },
     "Heavy Equipment Operator Training": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/heavy-equipment.svg",
-        "image": "/programs/training-heavy-equipment-us.jpg",
+        "image": "/programs/training-heavy-v2.jpg",
     },
     "Construction Safety Fundamentals (OSHA 10 Equivalent)": {
+        "title": "Construction Safety Fundamentals",
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/osha-safety.svg",
-        "image": "/programs/safety-fundamentals-us.jpg",
+        "image": "/programs/training-osha-v2.jpg",
+    },
+    "Construction Safety Fundamentals": {
+        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        "illustration": "/illustrations/osha-safety.svg",
+        "image": "/programs/training-osha-v2.jpg",
     },
     "Basic Jobsite Safety Orientation": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/orientation.svg",
-        "image": "/programs/training-orientation-us.jpg",
+        "image": "/programs/training-orientation-v2.jpg",
     },
     "Hand & Power Tool Safety": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/tools.svg",
-        "image": "/programs/training-tools-us.jpg",
+        "image": "/programs/training-tools-v2.jpg",
     },
     "PPE & Hazard Awareness": {
         "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
         "illustration": "/illustrations/ppe.svg",
-        "image": "/programs/training-ppe-safety-us.jpg",
+        "image": "/programs/training-ppe-v2.jpg",
     },
     "Ladder & Fall Prevention Basics": {
         "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
         "illustration": "/illustrations/ladder.svg",
-        "image": "/programs/training-ladder-us.jpg",
+        "image": "/programs/training-ladder-v2.jpg",
     },
 }
 
@@ -93,7 +101,7 @@ STANDARD_COURSES = [
         "duration": "12 hours",
         "level": "Intermediate",
         "category": "standard",
-        "provider": "Build Forces Partner Network",
+        "provider": "Buildforces Partner Network",
         "location": "California",
         "image": "/images/jobs-hero.jpg",
         "outcomes": "Proper manual handling and safe tool operation\nPPE selection, use, and hazard identification\nEmergency response and fire safety awareness\nWorkplace ethics, attendance, and quality standards",
@@ -105,7 +113,7 @@ STANDARD_COURSES = [
         "duration": "10 hours",
         "level": "Intermediate",
         "category": "standard",
-        "provider": "Build Forces Partner Network",
+        "provider": "Buildforces Partner Network",
         "location": "Los Angeles",
         "image": "/programs/heavy-equipment.jpg",
         "outcomes": "Read architectural and structural drawings\nTake accurate field measurements\nProduce material and labor cost estimates\nSpot discrepancies between plans and site conditions",
@@ -117,19 +125,19 @@ STANDARD_COURSES = [
         "duration": "5 Weeks",
         "level": "Beginner",
         "category": "standard",
-        "provider": "Build Forces Partner Network",
+        "provider": "Buildforces Partner Network",
         "location": "Los Angeles",
         "image": "/programs/blueprint-estimating.jpg",
-        "outcomes": "Pre-operation inspection and safety checks\nSafe operation of excavators, loaders, and compactors\nSite hazard awareness around heavy equipment\nOSHA-compliant operating procedures",
+        "outcomes": "Pre-operation inspection and safety checks\nSafe operation of excavators, loaders, and compactors\nSite hazard awareness around heavy equipment\nIndustry-standard operating procedures",
     },
     {
-        "title": "Construction Safety Fundamentals (OSHA 10 Equivalent)",
+        "title": "Construction Safety Fundamentals",
         "description": "Foundational safety course covering fall protection, electrical hazards, scaffolding, and PPE.",
         "fee": 50,
         "duration": "13 hours",
         "level": "Beginner",
         "category": "standard",
-        "provider": "Build Forces Partner Network",
+        "provider": "Buildforces Partner Network",
         "location": "Sacramento",
         "image": "/programs/safety-fundamentals.jpg",
         "outcomes": "Fall protection fundamentals\nElectrical hazard awareness\nScaffolding safety basics\nPPE requirements on active job sites",
@@ -144,7 +152,7 @@ IN_HOUSE_COURSES = [
         "duration": "4 hours",
         "level": "Beginner",
         "category": "in_house",
-        "provider": "Build Forces Training",
+        "provider": "Buildforces Training",
         "location": "California (online)",
         "image": None,
         "outcomes": "Identify common jobsite hazards\nBasic PPE selection and use\nWhat to do in a jobsite emergency",
@@ -156,7 +164,7 @@ IN_HOUSE_COURSES = [
         "duration": "6 hours",
         "level": "Beginner",
         "category": "in_house",
-        "provider": "Build Forces Training",
+        "provider": "Buildforces Training",
         "location": "California (online)",
         "image": None,
         "outcomes": "Safe operation of common hand and power tools\nRoutine tool maintenance and inspection\nRecognizing and reporting damaged equipment",
@@ -168,7 +176,7 @@ IN_HOUSE_COURSES = [
         "duration": "3 hours",
         "level": "Beginner",
         "category": "in_house",
-        "provider": "Build Forces Training",
+        "provider": "Buildforces Training",
         "location": "California (online)",
         "image": None,
         "outcomes": "Selecting the right PPE for the task\nProper fit and wear of protective equipment\nHazard identification fundamentals",
@@ -180,7 +188,7 @@ IN_HOUSE_COURSES = [
         "duration": "5 hours",
         "level": "Beginner",
         "category": "in_house",
-        "provider": "Build Forces Training",
+        "provider": "Buildforces Training",
         "location": "California (online)",
         "image": None,
         "outcomes": "Safe ladder setup and use\nFall-prevention practices for elevated work\nScaffold safety fundamentals",
@@ -277,7 +285,7 @@ def seed():
         if db.query(Admin).count() == 0:
             db.add(
                 Admin(
-                    full_name="Build Forces Admin",
+                    full_name="Buildforces Admin",
                     email="admin@buildforces.com",
                     password_hash=hash_password("Admin123!"),
                 )
@@ -288,14 +296,24 @@ def seed():
 
         if db.query(Instructor).count() == 0:
             for row in [
-                ("Maya Chen", "maya.chen@buildforces.com", "OSHA & Jobsite Safety", "Los Angeles"),
+                ("Maya Chen", "maya.chen@buildforces.com", "Jobsite Safety", "Los Angeles"),
                 ("Diego Alvarez", "diego.alvarez@buildforces.com", "Heavy Equipment", "Sacramento"),
                 ("Priya Nair", "priya.nair@buildforces.com", "Blueprint & Estimating", "San Diego"),
             ]:
                 db.add(
-                    Instructor(full_name=row[0], email=row[1], specialty=row[2], city=row[3])
+                    Instructor(
+                        full_name=row[0],
+                        email=row[1],
+                        specialty=row[2],
+                        city=row[3],
+                        password_hash=hash_password("Instructor123!"),
+                    )
                 )
             print("Seeded instructors.")
+        else:
+            for instructor in db.query(Instructor).filter(Instructor.password_hash.is_(None)).all():
+                instructor.password_hash = hash_password("Instructor123!")
+            print("Ensured instructor login passwords.")
 
         if db.query(HouseOwner).count() == 0:
             for row in [
@@ -305,10 +323,18 @@ def seed():
             ]:
                 db.add(
                     HouseOwner(
-                        full_name=row[0], email=row[1], city=row[2], project_count=row[3]
+                        full_name=row[0],
+                        email=row[1],
+                        city=row[2],
+                        project_count=row[3],
+                        password_hash=hash_password("Homeowner123!"),
                     )
                 )
             print("Seeded house owners.")
+        else:
+            for owner in db.query(HouseOwner).filter(HouseOwner.password_hash.is_(None)).all():
+                owner.password_hash = hash_password("Homeowner123!")
+            print("Ensured homeowner login passwords.")
 
         if db.query(Employer).count() == 0:
             db.add(

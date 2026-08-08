@@ -35,6 +35,7 @@ def create_registration(payload: RegistrationCreate, db: Session = Depends(get_d
         promo_code=payload.promo_code,
         skill_level=payload.skill_level,
         experience=payload.experience,
+        work_authorized=payload.work_authorized,
         agreed_to_terms=payload.agreed_to_terms,
     )
     registration.trades = [

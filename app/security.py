@@ -68,7 +68,7 @@ def decode_auth_token(token: str) -> Optional[tuple[int, str]]:
     except JWTError:
         return None
     role = payload.get("type")
-    if role not in ("labor", "admin", "worker"):
+    if role not in ("labor", "admin", "worker", "instructor", "homeowner"):
         return None
     try:
         user_id = int(payload["sub"])
