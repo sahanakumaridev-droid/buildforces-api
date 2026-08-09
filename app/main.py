@@ -20,6 +20,7 @@ def _ensure_auth_columns() -> None:
         "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
         "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS work_authorized BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -27,6 +28,42 @@ def _ensure_auth_columns() -> None:
 
 
 _ensure_auth_columns()
+
+
+def _ensure_fixed_admin() -> None:
+    """Keep a known demo admin login so operators can always open the control center."""
+    from app.database import SessionLocal
+    from app.models import Admin
+    from app.security import hash_password
+
+    fixed = [
+        ("admin@buildforces.com", "Buildforces Admin"),
+        ("admin@buildforce.com", "Buildforces Admin"),
+    ]
+    password = "Admin123!"
+    db = SessionLocal()
+    try:
+        for email, full_name in fixed:
+            admin = db.query(Admin).filter(Admin.email == email).first()
+            if not admin:
+                db.add(
+                    Admin(
+                        full_name=full_name,
+                        email=email,
+                        password_hash=hash_password(password),
+                        is_active=True,
+                    )
+                )
+            else:
+                admin.full_name = full_name
+                admin.password_hash = hash_password(password)
+                admin.is_active = True
+        db.commit()
+    finally:
+        db.close()
+
+
+_ensure_fixed_admin()
 
 app = FastAPI(title="Buildforces API")
 

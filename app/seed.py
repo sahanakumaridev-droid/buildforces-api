@@ -38,56 +38,60 @@ def ensure_course_columns():
         conn.execute(text("ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
 
 
+# Topic-matched lesson embeds (one distinct video per program — not stock fillers).
 COURSE_MEDIA = {
     "Labour Skills & Safety Training": {
         "title": "Jobsite Skills & Safety Training",
-        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        "video_url": "https://www.youtube.com/embed/lfoTLeFooR4",
         "illustration": "/illustrations/safety-training.svg",
         "image": "/programs/training-jobsite-v2.jpg",
     },
     "Jobsite Skills & Safety Training": {
-        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        # Construction safety orientation covering PPE, tools, equipment, fall hazards
+        "video_url": "https://www.youtube.com/embed/lfoTLeFooR4",
         "illustration": "/illustrations/safety-training.svg",
         "image": "/programs/training-jobsite-v2.jpg",
     },
     "Blueprint Reading & Construction Estimating": {
-        "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
+        "video_url": "https://www.youtube.com/embed/DSuP4YkaJ40",
         "illustration": "/illustrations/blueprint.svg",
         "image": "/programs/training-blueprint-v2.jpg",
     },
     "Heavy Equipment Operator Training": {
-        "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
+        "video_url": "https://www.youtube.com/embed/aoe_hMMs0DY",
         "illustration": "/illustrations/heavy-equipment.svg",
         "image": "/programs/training-heavy-v2.jpg",
     },
     "Construction Safety Fundamentals (OSHA 10 Equivalent)": {
         "title": "Construction Safety Fundamentals",
-        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        "video_url": "https://www.youtube.com/embed/4AaDzjO887o",
         "illustration": "/illustrations/osha-safety.svg",
         "image": "/programs/training-osha-v2.jpg",
     },
     "Construction Safety Fundamentals": {
-        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        # Introduction to OSHA / construction workplace safety
+        "video_url": "https://www.youtube.com/embed/4AaDzjO887o",
         "illustration": "/illustrations/osha-safety.svg",
         "image": "/programs/training-osha-v2.jpg",
     },
     "Basic Jobsite Safety Orientation": {
-        "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
+        # Construction site safety induction / new-hire orientation
+        "video_url": "https://www.youtube.com/embed/nybnFsIItPk",
         "illustration": "/illustrations/orientation.svg",
         "image": "/programs/training-orientation-v2.jpg",
     },
     "Hand & Power Tool Safety": {
-        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        "video_url": "https://www.youtube.com/embed/3Ev2L3yoxpI",
         "illustration": "/illustrations/tools.svg",
         "image": "/programs/training-tools-v2.jpg",
     },
     "PPE & Hazard Awareness": {
-        "video_url": "https://www.youtube.com/embed/aqz-KE-bpKQ",
+        "video_url": "https://www.youtube.com/embed/4nRQBL1-bUo",
         "illustration": "/illustrations/ppe.svg",
         "image": "/programs/training-ppe-v2.jpg",
     },
     "Ladder & Fall Prevention Basics": {
-        "video_url": "https://www.youtube.com/embed/ScMzIvxBSi4",
+        "video_url": "https://www.youtube.com/embed/Rcwwi7JVA5M",
         "illustration": "/illustrations/ladder.svg",
         "image": "/programs/training-ladder-v2.jpg",
     },
@@ -282,17 +286,24 @@ def seed():
         else:
             print("Jobs already seeded, skipping.")
 
-        if db.query(Admin).count() == 0:
+        admin_email = "admin@buildforces.com"
+        admin_password = "Admin123!"
+        existing_admin = db.query(Admin).filter(Admin.email == admin_email).first()
+        if not existing_admin:
             db.add(
                 Admin(
                     full_name="Buildforces Admin",
-                    email="admin@buildforces.com",
-                    password_hash=hash_password("Admin123!"),
+                    email=admin_email,
+                    password_hash=hash_password(admin_password),
+                    is_active=True,
                 )
             )
-            print("Seeded default admin (admin@buildforces.com / Admin123!).")
+            print(f"Seeded default admin ({admin_email} / {admin_password}).")
         else:
-            print("Admin already present, skipping.")
+            existing_admin.full_name = "Buildforces Admin"
+            existing_admin.password_hash = hash_password(admin_password)
+            existing_admin.is_active = True
+            print(f"Ensured fixed admin credentials ({admin_email} / {admin_password}).")
 
         if db.query(Instructor).count() == 0:
             for row in [

@@ -116,19 +116,24 @@ def require_admin(user: AuthUserOut = Depends(get_current_auth_user)) -> AuthUse
 
 @router.post("/login", response_model=AuthResponse)
 def login(payload: AuthLogin, db: Session = Depends(get_db)):
-    admin = db.query(Admin).filter(Admin.email == payload.email, Admin.is_active.is_(True)).first()
+    email = payload.email.lower().strip()
+
+    admin = db.query(Admin).filter(Admin.email == email, Admin.is_active.is_(True)).first()
     if admin and verify_password(payload.password, admin.password_hash):
         user = _admin_user(admin)
         return AuthResponse(token=create_auth_token(admin.id, "admin"), role="admin", user=user)
 
-    registration = db.query(Registration).filter(Registration.email == payload.email).first()
+    registration = db.query(Registration).filter(Registration.email == email).first()
     if registration and verify_password(payload.password, registration.password_hash):
+        registration.last_login_at = datetime.utcnow()
+        db.commit()
+        db.refresh(registration)
         user = _labor_user(registration)
         return AuthResponse(token=create_auth_token(registration.id, "labor"), role="labor", user=user)
 
     instructor = (
         db.query(Instructor)
-        .filter(Instructor.email == payload.email, Instructor.is_active.is_(True))
+        .filter(Instructor.email == email, Instructor.is_active.is_(True))
         .first()
     )
     if (
@@ -145,7 +150,7 @@ def login(payload: AuthLogin, db: Session = Depends(get_db)):
 
     homeowner = (
         db.query(HouseOwner)
-        .filter(HouseOwner.email == payload.email, HouseOwner.is_active.is_(True))
+        .filter(HouseOwner.email == email, HouseOwner.is_active.is_(True))
         .first()
     )
     if (

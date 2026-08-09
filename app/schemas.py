@@ -268,11 +268,19 @@ class AdminMemberOut(BaseModel):
     full_name: str
     email: str
     phone: str
+    language: str
     zip_code: str
+    state: Optional[str] = None
+    county: Optional[str] = None
+    promo_code: Optional[str] = None
     skill_level: str
     experience: str
-    trades: List[str]
+    work_authorized: bool = False
+    agreed_to_terms: bool = False
+    trades: List[SelectedTrade]
+    documents: List[DocumentOut] = []
     created_at: datetime
+    last_login_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True

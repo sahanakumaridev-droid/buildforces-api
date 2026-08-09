@@ -29,7 +29,11 @@ def admin_overview(
     _: AuthUserOut = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    members = db.query(Registration).order_by(Registration.created_at.desc()).limit(100).all()
+    members = (
+        db.query(Registration)
+        .order_by(Registration.created_at.desc())
+        .all()
+    )
     instructors = db.query(Instructor).order_by(Instructor.created_at.desc()).all()
     house_owners = db.query(HouseOwner).order_by(HouseOwner.created_at.desc()).all()
     employers = db.query(Employer).order_by(Employer.created_at.desc()).all()
@@ -61,11 +65,30 @@ def admin_overview(
                 full_name=m.full_name,
                 email=m.email,
                 phone=m.phone,
+                language=m.language,
                 zip_code=m.zip_code,
+                state=m.state,
+                county=m.county,
+                promo_code=m.promo_code,
                 skill_level=m.skill_level,
                 experience=m.experience,
-                trades=[t.trade_name for t in m.trades],
+                work_authorized=bool(m.work_authorized),
+                agreed_to_terms=bool(m.agreed_to_terms),
+                trades=[
+                    {"category": t.category, "trade_name": t.trade_name}
+                    for t in m.trades
+                ],
+                documents=[
+                    {
+                        "id": d.id,
+                        "doc_type": d.doc_type,
+                        "original_filename": d.original_filename,
+                        "uploaded_at": d.uploaded_at,
+                    }
+                    for d in m.documents
+                ],
                 created_at=m.created_at,
+                last_login_at=m.last_login_at,
             )
             for m in members
         ],

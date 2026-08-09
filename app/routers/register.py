@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
@@ -42,6 +44,7 @@ def create_registration(payload: RegistrationCreate, db: Session = Depends(get_d
         RegistrationTrade(category=t.category, trade_name=t.trade_name) for t in payload.trades
     ]
 
+    registration.last_login_at = datetime.utcnow()
     db.add(registration)
     db.commit()
     db.refresh(registration)
@@ -53,6 +56,9 @@ def lookup_registration(payload: RegistrationLookup, db: Session = Depends(get_d
     registration = db.query(Registration).filter(Registration.email == payload.email).first()
     if not registration or not verify_password(payload.password, registration.password_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password.")
+    registration.last_login_at = datetime.utcnow()
+    db.commit()
+    db.refresh(registration)
     return RegistrationAuthResponse(token=create_auth_token(registration.id, "labor"), registration=registration)
 
 

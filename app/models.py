@@ -41,6 +41,7 @@ class Registration(Base):
     agreed_to_terms: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     trades: Mapped[list["RegistrationTrade"]] = relationship(
         back_populates="registration", cascade="all, delete-orphan"
