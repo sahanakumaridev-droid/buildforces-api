@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Job
-from app.schemas import JobOut
+from app.schemas import JobAttachmentOut, JobOut
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -17,7 +17,34 @@ EXPERIENCE_YEARS = {
 }
 
 
+def _attachment_kind(mime: Optional[str], filename: str = "") -> str:
+    mime = (mime or "").lower()
+    name = filename.lower()
+    if mime.startswith("video/") or name.endswith((".mp4", ".webm", ".mov")):
+        return "video"
+    if mime.startswith("image/") or name.endswith((".jpg", ".jpeg", ".png", ".webp", ".heic")):
+        return "image"
+    if mime == "application/pdf" or name.endswith(".pdf"):
+        return "pdf"
+    return "file"
+
+
 def _job_to_out(job: Job, match_score: Optional[float] = None, matched_skills: Optional[list[str]] = None) -> JobOut:
+    attachments = []
+    for row in getattr(job, "attachments", None) or []:
+        attachments.append(
+            JobAttachmentOut(
+                id=row.id,
+                job_id=row.job_id,
+                file_kind=row.file_kind,
+                title=row.title,
+                original_filename=row.original_filename,
+                stored_filename=row.stored_filename or "",
+                file_url=row.file_url,
+                mime_type=row.mime_type,
+                created_at=row.created_at,
+            )
+        )
     return JobOut(
         id=job.id,
         title=job.title,
@@ -35,6 +62,16 @@ def _job_to_out(job: Job, match_score: Optional[float] = None, matched_skills: O
         apply_url=job.apply_url,
         match_score=match_score,
         matched_skills=matched_skills,
+        state=job.state,
+        wage_type=job.wage_type,
+        wage_display=job.wage_display,
+        working_hours=job.working_hours,
+        job_duration=job.job_duration,
+        start_date=job.start_date,
+        end_date=job.end_date,
+        description=job.description,
+        is_active=bool(job.is_active),
+        attachments=attachments,
     )
 
 

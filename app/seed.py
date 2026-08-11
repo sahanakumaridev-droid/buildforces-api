@@ -30,12 +30,39 @@ from app.models import (
 from app.security import hash_password
 
 
-def ensure_course_columns():
+def ensure_schema_columns():
+    """Idempotent ALTER TABLE for Phase 1 fields (safe on existing prod DBs)."""
+    statements = [
+        "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+        "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+        "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS work_authorized BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS state VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS wage_type VARCHAR(20)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS wage_display VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS working_hours VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_duration VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS start_date TIMESTAMP",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS end_date TIMESTAMP",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS trade VARCHAR(150)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS introduction TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS course_date TIMESTAMP",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(20)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS content_pattern VARCHAR(20)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS physical_location VARCHAR(255)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS online_info TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)",
+    ]
     with engine.begin() as conn:
-        conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)"))
-        conn.execute(text("ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)"))
-        conn.execute(text("ALTER TABLE instructors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
-        conn.execute(text("ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"))
+        for statement in statements:
+            conn.execute(text(statement))
+
+
+def ensure_course_columns():
+    ensure_schema_columns()
 
 
 # Topic-matched lesson embeds (one distinct video per program — not stock fillers).

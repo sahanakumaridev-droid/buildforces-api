@@ -183,6 +183,30 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(min_length=6)
 
 
+class JobAttachmentOut(BaseModel):
+    id: int
+    job_id: int
+    file_kind: str = "file"
+    title: Optional[str] = None
+    original_filename: str
+    stored_filename: str = ""
+    file_url: str
+    mime_type: Optional[str] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class JobAttachmentCreate(BaseModel):
+    title: Optional[str] = None
+    file_url: str
+    original_filename: str
+    stored_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_kind: Optional[str] = None
+
+
 class JobOut(BaseModel):
     id: int
     title: str
@@ -200,9 +224,68 @@ class JobOut(BaseModel):
     apply_url: str
     match_score: Optional[float] = None
     matched_skills: Optional[List[str]] = None
+    state: Optional[str] = None
+    wage_type: Optional[str] = None
+    wage_display: Optional[str] = None
+    working_hours: Optional[str] = None
+    job_duration: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    description: Optional[str] = None
+    is_active: bool = True
+    attachments: List[JobAttachmentOut] = []
 
     class Config:
         from_attributes = True
+
+
+class JobCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    trade_category: str = Field(min_length=1, max_length=100)
+    summary: str = Field(min_length=1)
+    description: Optional[str] = None
+    city: str = Field(min_length=1, max_length=100)
+    state: Optional[str] = Field(default=None, max_length=100)
+    zip_code: str = Field(default="", max_length=20)
+    wage_display: Optional[str] = Field(default=None, max_length=100)
+    wage_type: Optional[str] = Field(default="hourly", max_length=20)
+    pay_min: Optional[float] = None
+    pay_max: Optional[float] = None
+    working_hours: Optional[str] = Field(default=None, max_length=100)
+    job_duration: Optional[str] = Field(default=None, max_length=100)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    employment_type: str = Field(default="Full-time", max_length=50)
+    agency: str = Field(default="Buildforces", max_length=200)
+    skills: List[str] = []
+    min_experience_years: int = 0
+    apply_url: str = ""
+    is_active: bool = True
+    attachments: List[JobAttachmentCreate] = []
+
+
+class JobUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    trade_category: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    city: Optional[str] = Field(default=None, max_length=100)
+    state: Optional[str] = Field(default=None, max_length=100)
+    zip_code: Optional[str] = Field(default=None, max_length=20)
+    wage_display: Optional[str] = Field(default=None, max_length=100)
+    wage_type: Optional[str] = Field(default=None, max_length=20)
+    pay_min: Optional[float] = None
+    pay_max: Optional[float] = None
+    working_hours: Optional[str] = Field(default=None, max_length=100)
+    job_duration: Optional[str] = Field(default=None, max_length=100)
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    employment_type: Optional[str] = Field(default=None, max_length=50)
+    agency: Optional[str] = Field(default=None, max_length=200)
+    skills: Optional[List[str]] = None
+    min_experience_years: Optional[int] = None
+    apply_url: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 class CourseSessionOut(BaseModel):
@@ -215,6 +298,35 @@ class CourseSessionOut(BaseModel):
     seats_left: int
     course_title: Optional[str] = None
     course_image: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class CourseContentOut(BaseModel):
+    id: int
+    module_id: int
+    content_kind: str
+    title: str
+    description: Optional[str] = None
+    file_url: Optional[str] = None
+    original_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    sort_order: int = 0
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CourseModuleOut(BaseModel):
+    id: int
+    course_id: int
+    title: str
+    description: Optional[str] = None
+    reading_content: Optional[str] = None
+    sort_order: int = 0
+    contents: List[CourseContentOut] = []
 
     class Config:
         from_attributes = True
@@ -236,9 +348,156 @@ class CourseOut(BaseModel):
     illustration: Optional[str] = None
     purchased: bool = False
     sessions: List[CourseSessionOut] = []
+    trade: Optional[str] = None
+    introduction: Optional[str] = None
+    course_date: Optional[datetime] = None
+    delivery_type: Optional[str] = None
+    content_pattern: Optional[str] = None
+    physical_location: Optional[str] = None
+    online_info: Optional[str] = None
+    is_published: bool = True
+    modules: List[CourseModuleOut] = []
 
     class Config:
         from_attributes = True
+
+
+class CourseCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    trade: Optional[str] = Field(default=None, max_length=150)
+    introduction: Optional[str] = None
+    description: Optional[str] = None
+    location: str = Field(default="", max_length=100)
+    course_date: Optional[datetime] = None
+    duration: str = Field(default="", max_length=50)
+    fee: float = 0
+    delivery_type: Optional[str] = Field(default="onsite", max_length=20)
+    content_pattern: Optional[str] = Field(default=None, max_length=20)
+    physical_location: Optional[str] = None
+    online_info: Optional[str] = None
+    level: str = Field(default="Beginner", max_length=50)
+    category: str = Field(default="in_house", max_length=20)
+    provider: str = Field(default="Buildforces", max_length=150)
+    outcomes: List[str] = []
+    image: Optional[str] = None
+    video_url: Optional[str] = None
+    is_published: bool = True
+
+
+class CourseUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    trade: Optional[str] = Field(default=None, max_length=150)
+    introduction: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = Field(default=None, max_length=100)
+    course_date: Optional[datetime] = None
+    duration: Optional[str] = Field(default=None, max_length=50)
+    fee: Optional[float] = None
+    delivery_type: Optional[str] = Field(default=None, max_length=20)
+    content_pattern: Optional[str] = Field(default=None, max_length=20)
+    physical_location: Optional[str] = None
+    online_info: Optional[str] = None
+    level: Optional[str] = Field(default=None, max_length=50)
+    category: Optional[str] = Field(default=None, max_length=20)
+    provider: Optional[str] = Field(default=None, max_length=150)
+    outcomes: Optional[List[str]] = None
+    image: Optional[str] = None
+    video_url: Optional[str] = None
+    is_published: Optional[bool] = None
+
+
+class CourseModuleCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    description: Optional[str] = None
+    reading_content: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class CourseModuleUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    reading_content: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class ModuleReorderItem(BaseModel):
+    id: int
+    sort_order: int
+
+
+class ModuleReorderPayload(BaseModel):
+    modules: List[ModuleReorderItem]
+
+
+class CourseContentCreate(BaseModel):
+    content_kind: str = Field(min_length=1, max_length=20)
+    title: str = Field(min_length=1, max_length=200)
+    description: Optional[str] = None
+    file_url: Optional[str] = None
+    original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class CourseContentUpdate(BaseModel):
+    content_kind: Optional[str] = Field(default=None, max_length=20)
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    file_url: Optional[str] = None
+    original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    sort_order: Optional[int] = None
+
+
+class CertificateOut(BaseModel):
+    id: int
+    course_id: int
+    course_title: Optional[str] = None
+    registration_id: Optional[int] = None
+    member_name: Optional[str] = None
+    member_email: Optional[str] = None
+    title: Optional[str] = None
+    original_filename: str
+    file_url: str
+    mime_type: Optional[str] = None
+    notes: Optional[str] = None
+    uploaded_by_admin_id: Optional[int] = None
+    uploaded_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class CertificateCreate(BaseModel):
+    course_id: int
+    registration_id: Optional[int] = None
+    title: Optional[str] = None
+    file_url: str
+    original_filename: str
+    stored_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class CertificateUpdate(BaseModel):
+    course_id: Optional[int] = None
+    registration_id: Optional[int] = None
+    title: Optional[str] = None
+    file_url: Optional[str] = None
+    original_filename: Optional[str] = None
+    stored_filename: Optional[str] = None
+    mime_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class MediaUploadOut(BaseModel):
+    file_url: str
+    original_filename: str
+    stored_filename: str
+    mime_type: Optional[str] = None
+    size_bytes: int
 
 
 class EnrollmentOut(BaseModel):

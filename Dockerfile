@@ -15,4 +15,4 @@ COPY app/seed.py ./app/seed.py
 ENV PYTHONUNBUFFERED=1
 EXPOSE 8000
 
-CMD ["sh", "-c", "python -c 'from app.seed import seed; seed()' && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["sh", "-c", "python -c 'from app.database import Base, engine; from app.seed import ensure_schema_columns; import app.models; Base.metadata.create_all(bind=engine); ensure_schema_columns()' && python -c 'from app.seed import seed; seed()' && uvicorn app.main:app --host 0.0.0.0 --port 8000"]

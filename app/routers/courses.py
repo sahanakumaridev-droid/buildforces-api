@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Course, CourseSession, Enrollment, Registration
-from app.schemas import CourseOut, CourseSessionOut, EnrollmentOut
+from app.schemas import CourseContentOut, CourseModuleOut, CourseOut, CourseSessionOut, EnrollmentOut
 from app.security import decode_auth_token
 
 router = APIRouter(prefix="/api/courses", tags=["courses"])
@@ -48,8 +48,39 @@ def _session_out(session: CourseSession) -> CourseSessionOut:
     )
 
 
+def _content_out(content) -> CourseContentOut:
+    return CourseContentOut(
+        id=content.id,
+        module_id=content.module_id,
+        content_kind=content.content_kind,
+        title=content.title,
+        description=content.description,
+        file_url=content.file_url,
+        original_filename=content.original_filename,
+        mime_type=content.mime_type,
+        sort_order=content.sort_order,
+        created_at=content.created_at,
+    )
+
+
+def _module_out(module) -> CourseModuleOut:
+    contents = sorted(module.contents or [], key=lambda c: c.sort_order)
+    return CourseModuleOut(
+        id=module.id,
+        course_id=module.course_id,
+        title=module.title,
+        description=module.description,
+        reading_content=module.reading_content,
+        sort_order=module.sort_order,
+        contents=[_content_out(c) for c in contents],
+    )
+
+
 def _course_to_out(
-    course: Course, purchased: bool = False, include_sessions: bool = True
+    course: Course,
+    purchased: bool = False,
+    include_sessions: bool = True,
+    include_modules: bool = False,
 ) -> CourseOut:
     sessions = []
     if include_sessions:
@@ -58,6 +89,12 @@ def _course_to_out(
             key=lambda s: s.starts_at,
         )
         sessions = [_session_out(s) for s in upcoming[:8]]
+    modules = []
+    if include_modules:
+        modules = [
+            _module_out(m)
+            for m in sorted(course.modules or [], key=lambda m: m.sort_order)
+        ]
     return CourseOut(
         id=course.id,
         title=course.title,
@@ -74,6 +111,15 @@ def _course_to_out(
         illustration=course.illustration,
         purchased=purchased,
         sessions=sessions,
+        trade=course.trade,
+        introduction=course.introduction,
+        course_date=course.course_date,
+        delivery_type=course.delivery_type,
+        content_pattern=course.content_pattern,
+        physical_location=course.physical_location,
+        online_info=course.online_info,
+        is_published=bool(course.is_published) if course.is_published is not None else True,
+        modules=modules,
     )
 
 
@@ -174,7 +220,7 @@ def get_course(
             .first()
             is not None
         )
-    return _course_to_out(course, purchased=purchased)
+    return _course_to_out(course, purchased=purchased, include_modules=True)
 
 
 @router.post("/{course_id}/enroll", response_model=EnrollmentOut)

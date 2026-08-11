@@ -3,11 +3,12 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from sqlalchemy import text
 
 from app.database import Base, engine
-from app.routers import admin, auth, contact, courses, documents, employers, jobs, register
+from app.routers import admin, admin_manage, auth, contact, courses, documents, employers, jobs, register
 
 load_dotenv()
 
@@ -21,6 +22,26 @@ def _ensure_auth_columns() -> None:
         "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS work_authorized BOOLEAN DEFAULT FALSE",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
+        # Phase 1 job fields
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS state VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS wage_type VARCHAR(20)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS wage_display VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS working_hours VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS job_duration VARCHAR(100)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS start_date TIMESTAMP",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS end_date TIMESTAMP",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS description TEXT",
+        # Phase 1 course fields
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS trade VARCHAR(150)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS introduction TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS course_date TIMESTAMP",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(20)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS content_pattern VARCHAR(20)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS physical_location VARCHAR(255)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS online_info TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -77,8 +98,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+UPLOAD_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "uploads"))
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
 app.include_router(auth.router)
 app.include_router(admin.router)
+app.include_router(admin_manage.router)
 app.include_router(contact.router)
 app.include_router(register.router)
 app.include_router(documents.router)
