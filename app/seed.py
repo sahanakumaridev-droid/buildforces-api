@@ -55,6 +55,7 @@ def ensure_schema_columns():
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS is_published BOOLEAN DEFAULT TRUE",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)",
+        "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE",
     ]
     with engine.begin() as conn:
         for statement in statements:

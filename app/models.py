@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -42,6 +42,7 @@ class Registration(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
 
     trades: Mapped[list["RegistrationTrade"]] = relationship(
         back_populates="registration", cascade="all, delete-orphan"
@@ -279,6 +280,21 @@ class CourseSession(Base):
     seats_left: Mapped[int] = mapped_column(Integer, default=12)
 
     course: Mapped["Course"] = relationship(back_populates="sessions")
+
+
+class CatalogAssignment(Base):
+    __tablename__ = "catalog_assignments"
+    __table_args__ = (UniqueConstraint("slug", "member_email", name="uq_catalog_assign_slug_email"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(200), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    image: Mapped[str] = mapped_column(String(500), default="")
+    member_email: Mapped[str] = mapped_column(String(255), index=True)
+    registration_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("registrations.id"), nullable=True, index=True
+    )
+    published_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Enrollment(Base):
