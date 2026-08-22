@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.database import Base, engine
-from app.routers import admin, admin_manage, auth, catalog, contact, courses, documents, employers, geo, jobs, register
+from app.routers import admin, admin_manage, auth, catalog, contact, courses, documents, employers, geo, homeowner, instructor, jobs, labor_inbox, register
 
 load_dotenv()
 
@@ -20,6 +20,7 @@ def _ensure_auth_columns() -> None:
     statements = [
         "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
         "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+        "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20) DEFAULT ''",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS work_authorized BOOLEAN DEFAULT FALSE",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
         # Phase 1 job fields
@@ -43,6 +44,17 @@ def _ensure_auth_columns() -> None:
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS house_owner_id INTEGER",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS project_status VARCHAR(30) DEFAULT 'posted'",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS timeline VARCHAR(200)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cancel_reason TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_id INTEGER",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS grade VARCHAR(40)",
+        "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE employers ADD COLUMN IF NOT EXISTS rank_label VARCHAR(50)",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -89,42 +101,51 @@ _ensure_fixed_admin()
 
 
 def _ensure_paid_demo_labor() -> None:
-    """Keep a known paid labor login so catalog publishes land on a real dashboard."""
+    """Keep known paid labor logins so catalog publishes and QA land on a real dashboard."""
     from app.database import SessionLocal
     from app.models import Registration, RegistrationTrade
     from app.security import hash_password
 
-    email = "sahanakumari@buildforces.com"
-    password = "Welcome123!"
+    accounts = [
+        ("sahanakumari@buildforces.com", "Welcome123!", "Sahana Kumari", "415-555-0148"),
+        ("sahanakumari@buildforce.com", "Labor123!", "Sahana Kumari", "415-555-0148"),
+    ]
     db = SessionLocal()
     try:
-        member = db.query(Registration).filter(Registration.email == email).first()
-        if not member:
-            member = Registration(
-                full_name="Sahana Kumari",
-                email=email,
-                phone="415-555-0148",
-                password_hash=hash_password(password),
-                language="en",
-                zip_code="94103",
-                state="CA",
-                county="San Francisco",
-                skill_level="skilled",
-                experience="3-5",
-                work_authorized=True,
-                agreed_to_terms=True,
-                is_paid=True,
-            )
-            member.trades = [
-                RegistrationTrade(category="General", trade_name="Construction"),
-            ]
-            db.add(member)
-        else:
-            member.full_name = member.full_name or "Sahana Kumari"
-            member.password_hash = hash_password(password)
-            member.is_paid = True
-            member.work_authorized = True
-            member.agreed_to_terms = True
+        for email, password, full_name, phone in accounts:
+            member = db.query(Registration).filter(Registration.email == email).first()
+            if not member:
+                member = Registration(
+                    full_name=full_name,
+                    email=email,
+                    phone=phone,
+                    password_hash=hash_password(password),
+                    language="en",
+                    zip_code="94103",
+                    state="CA",
+                    county="San Francisco",
+                    skill_level="skilled",
+                    experience="3-5",
+                    work_authorized=True,
+                    agreed_to_terms=True,
+                    is_paid=True,
+                    is_blocked=False,
+                )
+                member.trades = [
+                    RegistrationTrade(category="General", trade_name="Construction"),
+                ]
+                db.add(member)
+            else:
+                member.full_name = member.full_name or full_name
+                member.password_hash = hash_password(password)
+                member.is_paid = True
+                member.is_blocked = False
+                member.work_authorized = True
+                member.agreed_to_terms = True
+        db.flush()
+        from app.seed import ensure_demo_labor_courses
+
+        ensure_demo_labor_courses(db)
         db.commit()
     finally:
         db.close()
@@ -151,11 +172,14 @@ app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 app.include_router(auth.router)
 app.include_router(admin.router)
 app.include_router(admin_manage.router)
+app.include_router(labor_inbox.router)
 app.include_router(contact.router)
 app.include_router(register.router)
 app.include_router(documents.router)
 app.include_router(employers.router)
 app.include_router(jobs.router)
+app.include_router(homeowner.router)
+app.include_router(instructor.router)
 app.include_router(courses.router)
 app.include_router(catalog.router)
 app.include_router(geo.router)

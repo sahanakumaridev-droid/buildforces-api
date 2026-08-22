@@ -108,6 +108,16 @@ class RegistrationAuthResponse(BaseModel):
     registration: RegistrationDetail
 
 
+class GoogleAuthRequest(BaseModel):
+    access_token: str = Field(min_length=1)
+    phone: Optional[str] = None
+    language: str = "en"
+    zip_code: str = Field(min_length=1)
+    trades: List[SelectedTrade] = Field(min_length=1)
+    skill_level: str
+    experience: str
+
+
 class EmployerCreate(BaseModel):
     company_name: str = Field(min_length=1, max_length=200)
     email: EmailStr
@@ -124,6 +134,9 @@ class EmployerOut(BaseModel):
     company_name: str
     email: EmailStr
     created_at: datetime
+    is_blocked: bool = False
+    is_verified: bool = False
+    rank_label: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -132,6 +145,32 @@ class EmployerOut(BaseModel):
 class EmployerAuthResponse(BaseModel):
     token: str
     employer: EmployerOut
+
+
+class EmployerOverviewOut(BaseModel):
+    company_name: str
+    email: EmailStr
+    on_site: int = 0
+    reports_today: int = 0
+    tasks: int = 0
+    open_cpm: int = 0
+    is_verified: bool = False
+    rank_label: Optional[str] = None
+    labour_active: int = 0
+    enrollments: int = 0
+    certificates: int = 0
+
+
+class EmployerReportOut(BaseModel):
+    company_name: str
+    period_label: str
+    generated_at: datetime
+    labour_active: int
+    enrolments: int
+    certificates_issued: int
+    jobs_active: int
+    applications: int
+    rows: List[dict]
 
 
 class AdminOut(BaseModel):
@@ -156,6 +195,22 @@ class AdminRegister(BaseModel):
     invite_code: str = Field(min_length=1, max_length=100)
 
 
+class InstructorRegister(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(min_length=6)
+    specialty: str = Field(min_length=1, max_length=150)
+    city: str = Field(min_length=1, max_length=100)
+
+
+class HomeownerRegister(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(min_length=6)
+    city: str = Field(min_length=1, max_length=100)
+    zip_code: str = Field(default="", max_length=20)
+
+
 class AuthUserOut(BaseModel):
     id: int
     full_name: str
@@ -176,11 +231,96 @@ class ForgotPasswordRequest(BaseModel):
 class ForgotPasswordResponse(BaseModel):
     message: str
     reset_url: Optional[str] = None
+    email_sent: bool = False
 
 
 class ResetPasswordRequest(BaseModel):
     token: str
     password: str = Field(min_length=6)
+
+
+class LaborNotificationOut(BaseModel):
+    id: int
+    title: str
+    body: str
+    kind: str
+    is_read: bool
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LaborMessageOut(BaseModel):
+    id: int
+    peer_name: str
+    peer_role: str
+    subject: str
+    body: str
+    direction: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class LaborMessageCreate(BaseModel):
+    peer_name: str = Field(default="BUILD FORCES Support", max_length=200)
+    subject: str = Field(default="", max_length=200)
+    body: str = Field(min_length=1)
+
+
+class MemberReminderIn(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(default="", max_length=4000)
+
+
+class CompanyFlagIn(BaseModel):
+    blocked: Optional[bool] = None
+    verified: Optional[bool] = None
+    rank_label: Optional[str] = None
+
+
+class CompanyReviewOut(BaseModel):
+    id: int
+    employer_id: int
+    company_name: Optional[str] = None
+    author_name: str
+    rating: int
+    body: str
+    status: str
+    created_at: datetime
+
+
+class CompanyReviewStatusIn(BaseModel):
+    status: str = Field(pattern="^(pending|approved|rejected)$")
+
+
+class InstructorAdminCreate(BaseModel):
+    full_name: str = Field(min_length=1, max_length=200)
+    email: EmailStr
+    password: str = Field(min_length=6)
+    specialty: str = Field(default="General", max_length=150)
+    city: str = Field(default="California", max_length=100)
+
+
+class InstructorAdminUpdate(BaseModel):
+    full_name: Optional[str] = None
+    specialty: Optional[str] = None
+    city: Optional[str] = None
+    is_active: Optional[bool] = None
+    password: Optional[str] = Field(default=None, min_length=6)
+
+
+class CourseInstructorIn(BaseModel):
+    instructor_id: Optional[int] = None
+
+
+class CertificateGenerateIn(BaseModel):
+    course_id: int
+    registration_id: int
+    title: Optional[str] = None
+    notes: Optional[str] = None
 
 
 class JobAttachmentOut(BaseModel):
@@ -234,6 +374,11 @@ class JobOut(BaseModel):
     description: Optional[str] = None
     is_active: bool = True
     attachments: List[JobAttachmentOut] = []
+    house_owner_id: Optional[int] = None
+    project_status: Optional[str] = None
+    timeline: Optional[str] = None
+    cancel_reason: Optional[str] = None
+    applicant_count: int = 0
 
     class Config:
         from_attributes = True
@@ -506,6 +651,8 @@ class EnrollmentOut(BaseModel):
     status: str
     enrolled_at: datetime
     course: CourseOut
+    progress_pct: int = 0
+    grade: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -540,9 +687,14 @@ class AdminMemberOut(BaseModel):
     documents: List[DocumentOut] = []
     created_at: datetime
     last_login_at: Optional[datetime] = None
+    is_blocked: bool = False
 
     class Config:
         from_attributes = True
+
+
+class MemberBlockIn(BaseModel):
+    blocked: bool
 
 
 class AdminDirectoryUserOut(BaseModel):
@@ -554,6 +706,9 @@ class AdminDirectoryUserOut(BaseModel):
     city: Optional[str] = None
     created_at: datetime
     is_active: bool = True
+    is_blocked: bool = False
+    is_verified: bool = False
+    rank_label: Optional[str] = None
 
 
 class AdminOverviewOut(BaseModel):
@@ -564,3 +719,127 @@ class AdminOverviewOut(BaseModel):
     employers: List[AdminDirectoryUserOut]
     admins: List[AdminDirectoryUserOut]
     recent_enrollments: List[dict]
+
+
+class HomeownerJobCreate(BaseModel):
+    title: str = Field(min_length=1, max_length=200)
+    trade_category: str = Field(min_length=1, max_length=100)
+    summary: str = Field(min_length=1)
+    description: Optional[str] = None
+    city: str = Field(min_length=1, max_length=100)
+    state: Optional[str] = "California"
+    zip_code: str = Field(default="", max_length=20)
+    budget: Optional[str] = None
+    timeline: Optional[str] = None
+    pay_min: Optional[float] = None
+    pay_max: Optional[float] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    skills: List[str] = []
+
+
+class HomeownerJobUpdate(BaseModel):
+    title: Optional[str] = None
+    trade_category: Optional[str] = None
+    summary: Optional[str] = None
+    description: Optional[str] = None
+    city: Optional[str] = None
+    state: Optional[str] = None
+    zip_code: Optional[str] = None
+    budget: Optional[str] = None
+    timeline: Optional[str] = None
+    pay_min: Optional[float] = None
+    pay_max: Optional[float] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    skills: Optional[List[str]] = None
+    project_status: Optional[str] = None
+    cancel_reason: Optional[str] = None
+
+
+class ApplicantOut(BaseModel):
+    id: int
+    job_id: int
+    status: str
+    applied_at: datetime
+    note: Optional[str] = None
+    member_id: int
+    full_name: str
+    email: str
+    phone: str
+    zip_code: str
+    skill_level: str
+    experience: str
+    trades: List[str] = []
+    verified: bool = False
+    rating: Optional[float] = None
+
+
+class JobReviewIn(BaseModel):
+    registration_id: int
+    rating_quality: int = Field(ge=1, le=5)
+    rating_punctuality: int = Field(ge=1, le=5)
+    rating_professionalism: int = Field(ge=1, le=5)
+    comment: str = Field(min_length=1)
+
+
+class JobReviewOut(BaseModel):
+    id: int
+    job_id: int
+    registration_id: int
+    rating_quality: int
+    rating_punctuality: int
+    rating_professionalism: int
+    comment: str
+    created_at: datetime
+
+
+class JobMessageIn(BaseModel):
+    body: str = Field(min_length=1)
+
+
+class JobMessageOut(BaseModel):
+    id: int
+    job_id: int
+    sender_role: str
+    sender_id: int
+    sender_name: str
+    body: str
+    created_at: datetime
+
+
+class HomeownerOverviewOut(BaseModel):
+    active_projects: int
+    open_jobs: int
+    applicants: int
+    completed: int
+    jobs: List[JobOut]
+
+
+class InstructorStudentOut(BaseModel):
+    enrollment_id: int
+    member_id: int
+    full_name: str
+    email: str
+    course_id: int
+    course_title: str
+    status: str
+    progress_pct: int
+    grade: Optional[str] = None
+    enrolled_at: datetime
+    certificate_id: Optional[int] = None
+    certificate_pending: bool = False
+
+
+class InstructorOverviewOut(BaseModel):
+    courses: int
+    students: int
+    pending_grades: int
+    pending_certificates: int
+    revenue: float
+    sessions: int
+
+
+class GradeIn(BaseModel):
+    grade: str = Field(min_length=1, max_length=40)
+    progress_pct: Optional[int] = Field(default=None, ge=0, le=100)

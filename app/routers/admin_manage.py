@@ -26,6 +26,7 @@ from app.routers.jobs import _attachment_kind, _job_to_out
 from app.schemas import (
     AuthUserOut,
     CertificateCreate,
+    CertificateGenerateIn,
     CertificateOut,
     CertificateUpdate,
     CourseContentCreate,
@@ -890,3 +891,219 @@ def admin_delete_certificate(
     db.delete(row)
     db.commit()
     return {"ok": True}
+
+
+@router.post("/certificates/generate", response_model=CertificateOut, status_code=201)
+def admin_generate_certificate(
+    payload: CertificateGenerateIn,
+    admin: AuthUserOut = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    course = db.query(Course).filter(Course.id == payload.course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+    member = db.query(Registration).filter(Registration.id == payload.registration_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found.")
+
+    cert_title = (payload.title or f"{course.title} Certificate").strip()
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>{cert_title}</title>
+<style>
+body{{font-family:Georgia,serif;margin:0;padding:48px;background:#f8f7fc;color:#0f172a}}
+.card{{max-width:720px;margin:0 auto;background:#fff;border:2px solid #7c3aed;border-radius:16px;padding:48px;text-align:center}}
+h1{{font-size:28px;margin:0 0 8px}} .brand{{color:#7c3aed;letter-spacing:.12em;font-size:12px;font-weight:700}}
+.name{{font-size:32px;margin:24px 0 8px}} .meta{{color:#64748b;font-size:14px}}
+</style></head><body><div class="card">
+<p class="brand">BUILD FORCES</p>
+<h1>Certificate of Completion</h1>
+<p class="meta">This certifies that</p>
+<p class="name">{member.full_name}</p>
+<p class="meta">has completed</p>
+<p style="font-size:20px;font-weight:700;margin:12px 0">{course.title}</p>
+<p class="meta">Issued {datetime.utcnow().strftime("%B %d, %Y")}</p>
+</div></body></html>"""
+
+    upload_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "certificates"))
+    os.makedirs(upload_root, exist_ok=True)
+    stored = f"cert_{uuid.uuid4().hex}.html"
+    path = os.path.join(upload_root, stored)
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(html)
+    file_url = f"/uploads/certificates/{stored}"
+    row = Certificate(
+        course_id=course.id,
+        registration_id=member.id,
+        title=cert_title,
+        original_filename=stored,
+        stored_filename=stored,
+        mime_type="text/html",
+        file_url=file_url,
+        notes=payload.notes,
+        uploaded_by_admin_id=admin.id,
+    )
+    db.add(row)
+    db.commit()
+    row = (
+        db.query(Certificate)
+        .options(joinedload(Certificate.course), joinedload(Certificate.registration))
+        .filter(Certificate.id == row.id)
+        .first()
+    )
+    return _certificate_out(row)
+
+
+@router.post("/instructors", status_code=201)
+def admin_create_instructor(
+    payload: dict,
+    _: AuthUserOut = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models import Instructor
+    from app.security import hash_password
+
+    email = str(payload.get("email", "")).strip().lower()
+    full_name = str(payload.get("full_name", "")).strip()
+    password = str(payload.get("password", "")).strip()
+    if not email or not full_name or len(password) < 6:
+        raise HTTPException(status_code=400, detail="full_name, email, and password (6+) are required.")
+    if db.query(Instructor).filter(Instructor.email == email).first():
+        raise HTTPException(status_code=400, detail="An instructor with that email already exists.")
+    row = Instructor(
+        full_name=full_name,
+        email=email,
+        specialty=str(payload.get("specialty") or "General"),
+        city=str(payload.get("city") or "California"),
+        password_hash=hash_password(password),
+        is_active=True,
+    )
+    db.add(row)
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "full_name": row.full_name,
+        "email": row.email,
+        "specialty": row.specialty,
+        "city": row.city,
+        "is_active": row.is_active,
+    }
+
+
+@router.put("/instructors/{instructor_id}")
+def admin_update_instructor(
+    instructor_id: int,
+    payload: dict,
+    _: AuthUserOut = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models import Instructor
+    from app.security import hash_password
+
+    row = db.query(Instructor).filter(Instructor.id == instructor_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Instructor not found.")
+    if "full_name" in payload and payload["full_name"]:
+        row.full_name = str(payload["full_name"]).strip()
+    if "specialty" in payload and payload["specialty"] is not None:
+        row.specialty = str(payload["specialty"]).strip()
+    if "city" in payload and payload["city"] is not None:
+        row.city = str(payload["city"]).strip()
+    if "is_active" in payload and payload["is_active"] is not None:
+        row.is_active = bool(payload["is_active"])
+    if payload.get("password"):
+        row.password_hash = hash_password(str(payload["password"]))
+    db.commit()
+    db.refresh(row)
+    return {
+        "id": row.id,
+        "full_name": row.full_name,
+        "email": row.email,
+        "specialty": row.specialty,
+        "city": row.city,
+        "is_active": row.is_active,
+    }
+
+
+@router.delete("/instructors/{instructor_id}")
+def admin_remove_instructor(
+    instructor_id: int,
+    _: AuthUserOut = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models import Instructor
+
+    row = db.query(Instructor).filter(Instructor.id == instructor_id).first()
+    if not row:
+        raise HTTPException(status_code=404, detail="Instructor not found.")
+    row.is_active = False
+    # Unassign from courses
+    for course in db.query(Course).filter(Course.instructor_id == instructor_id).all():
+        course.instructor_id = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.put("/courses/{course_id}/instructor", response_model=CourseOut)
+def admin_assign_course_instructor(
+    course_id: int,
+    payload: dict,
+    _: AuthUserOut = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    from app.models import Instructor
+
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+    instructor_id = payload.get("instructor_id")
+    if instructor_id is None:
+        course.instructor_id = None
+    else:
+        instructor = db.query(Instructor).filter(Instructor.id == int(instructor_id), Instructor.is_active.is_(True)).first()
+        if not instructor:
+            raise HTTPException(status_code=404, detail="Instructor not found.")
+        course.instructor_id = instructor.id
+    db.commit()
+    db.refresh(course)
+    return _course_to_out(course)
+
+
+@router.post("/courses/{course_id}/split-modules")
+def admin_split_course_modules(
+    course_id: int,
+    _: AuthUserOut = Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    """Split long slide/reading contents into smaller modules (max ~5 items each)."""
+    course = (
+        db.query(Course)
+        .options(joinedload(Course.modules).joinedload(CourseModule.contents))
+        .filter(Course.id == course_id)
+        .first()
+    )
+    if not course:
+        raise HTTPException(status_code=404, detail="Course not found.")
+
+    created = 0
+    for module in list(course.modules or []):
+        contents = sorted(module.contents or [], key=lambda c: c.sort_order or 0)
+        if len(contents) <= 5:
+            continue
+        # Keep first 5 in original module; move the rest into new modules of 5
+        chunks = [contents[i : i + 5] for i in range(5, len(contents), 5)]
+        base_order = (module.sort_order or 0) + 1
+        for idx, chunk in enumerate(chunks):
+            new_mod = CourseModule(
+                course_id=course.id,
+                title=f"{module.title} — Part {idx + 2}",
+                sort_order=base_order + idx,
+            )
+            db.add(new_mod)
+            db.flush()
+            for c_idx, content in enumerate(chunk):
+                content.module_id = new_mod.id
+                content.sort_order = c_idx
+            created += 1
+    db.commit()
+    return {"ok": True, "modules_created": created}

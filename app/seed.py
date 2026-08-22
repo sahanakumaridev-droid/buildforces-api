@@ -20,14 +20,93 @@ from sqlalchemy import text
 from app.database import Base, SessionLocal, engine
 from app.models import (
     Admin,
+    CatalogAssignment,
     Course,
     CourseSession,
     Employer,
+    Enrollment,
     HouseOwner,
     Instructor,
     Job,
+    Registration,
+    RegistrationTrade,
 )
 from app.security import hash_password
+
+DEMO_LABOR_EMAILS = (
+    "sahanakumari@buildforce.com",
+    "sahanakumari@buildforces.com",
+)
+
+DEMO_LABOR_CATALOG = (
+    {
+        "slug": "construction-safety-fundamentals",
+        "title": "Construction Safety Fundamentals",
+        "image": "/programs/training-osha-v2.jpg",
+    },
+    {
+        "slug": "hand-power-tools",
+        "title": "Hand & Power Tools",
+        "image": "/programs/training-tools-v2.jpg",
+    },
+)
+
+
+def ensure_demo_labor_courses(db):
+    """Give demo labor accounts catalog ownership + matching enrollments."""
+    for email in DEMO_LABOR_EMAILS:
+        member = db.query(Registration).filter(Registration.email == email).first()
+        if not member:
+            continue
+        member.is_paid = True
+        for course in DEMO_LABOR_CATALOG:
+            existing = (
+                db.query(CatalogAssignment)
+                .filter(
+                    CatalogAssignment.slug == course["slug"],
+                    CatalogAssignment.member_email == email,
+                )
+                .first()
+            )
+            if existing:
+                existing.title = course["title"]
+                existing.image = course["image"]
+                existing.registration_id = member.id
+            else:
+                db.add(
+                    CatalogAssignment(
+                        slug=course["slug"],
+                        title=course["title"],
+                        image=course["image"],
+                        member_email=email,
+                        registration_id=member.id,
+                    )
+                )
+        safety = (
+            db.query(Course)
+            .filter(Course.title == "Construction Safety Fundamentals")
+            .first()
+        )
+        if safety:
+            enrolled = (
+                db.query(Enrollment)
+                .filter(
+                    Enrollment.registration_id == member.id,
+                    Enrollment.course_id == safety.id,
+                )
+                .first()
+            )
+            if enrolled:
+                enrolled.status = "purchased"
+            else:
+                db.add(
+                    Enrollment(
+                        registration_id=member.id,
+                        course_id=safety.id,
+                        status="purchased",
+                    )
+                )
+    db.flush()
 
 
 def ensure_schema_columns():
@@ -35,6 +114,7 @@ def ensure_schema_columns():
     statements = [
         "ALTER TABLE instructors ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
         "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+        "ALTER TABLE house_owners ADD COLUMN IF NOT EXISTS zip_code VARCHAR(20) DEFAULT ''",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS work_authorized BOOLEAN DEFAULT FALSE",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS state VARCHAR(100)",
@@ -56,6 +136,17 @@ def ensure_schema_columns():
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS video_url VARCHAR(500)",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS illustration VARCHAR(255)",
         "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_paid BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE registrations ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS house_owner_id INTEGER",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS project_status VARCHAR(30) DEFAULT 'posted'",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS timeline VARCHAR(200)",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cancel_reason TEXT",
+        "ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_id INTEGER",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0",
+        "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS grade VARCHAR(40)",
+        "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE",
+        "ALTER TABLE employers ADD COLUMN IF NOT EXISTS rank_label VARCHAR(50)",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -391,6 +482,43 @@ def seed():
                 )
             )
             print("Seeded sample employers.")
+
+        demo_labor_email = "sahanakumari@buildforce.com"
+        demo_labor_password = "Labor123!"
+        demo_labor = db.query(Registration).filter(Registration.email == demo_labor_email).first()
+        if not demo_labor:
+            demo_labor = Registration(
+                full_name="Sahana Kumari",
+                email=demo_labor_email,
+                phone="415-555-0148",
+                password_hash=hash_password(demo_labor_password),
+                language="en",
+                zip_code="94103",
+                state="CA",
+                county="San Francisco",
+                skill_level="skilled",
+                experience="3-5",
+                work_authorized=True,
+                agreed_to_terms=True,
+                is_paid=True,
+                is_blocked=False,
+            )
+            demo_labor.trades = [
+                RegistrationTrade(category="General", trade_name="Construction"),
+            ]
+            db.add(demo_labor)
+            print(f"Seeded demo labor ({demo_labor_email} / {demo_labor_password}, is_paid=True).")
+        else:
+            demo_labor.password_hash = hash_password(demo_labor_password)
+            demo_labor.is_paid = True
+            demo_labor.is_blocked = False
+            demo_labor.work_authorized = True
+            demo_labor.agreed_to_terms = True
+            print(f"Ensured demo labor login ({demo_labor_email} / {demo_labor_password}, is_paid=True).")
+
+        db.flush()
+        ensure_demo_labor_courses(db)
+        print("Ensured demo labor catalog courses and enrollments.")
 
         if db.query(CourseSession).count() == 0:
             courses = db.query(Course).order_by(Course.id.asc()).all()

@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Job
-from app.schemas import JobAttachmentOut, JobOut
+from app.routers.auth import require_labor
+from app.schemas import AuthUserOut, JobAttachmentOut, JobOut
 
 router = APIRouter(prefix="/api/jobs", tags=["jobs"])
 
@@ -72,6 +73,11 @@ def _job_to_out(job: Job, match_score: Optional[float] = None, matched_skills: O
         description=job.description,
         is_active=bool(job.is_active),
         attachments=attachments,
+        house_owner_id=getattr(job, "house_owner_id", None),
+        project_status=getattr(job, "project_status", None),
+        timeline=getattr(job, "timeline", None),
+        cancel_reason=getattr(job, "cancel_reason", None),
+        applicant_count=len(getattr(job, "applications", None) or []),
     )
 
 
@@ -151,3 +157,28 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
     if not job:
         raise HTTPException(status_code=404, detail="Job not found.")
     return _job_to_out(job)
+
+
+@router.post("/{job_id}/apply")
+def apply_to_job(
+    job_id: int,
+    user: AuthUserOut = Depends(require_labor),
+    db: Session = Depends(get_db),
+):
+    from app.models import JobApplication
+
+    job = db.query(Job).filter(Job.id == job_id, Job.is_active == True).first()  # noqa: E712
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    existing = (
+        db.query(JobApplication)
+        .filter(JobApplication.job_id == job_id, JobApplication.registration_id == user.id)
+        .first()
+    )
+    if existing:
+        return {"ok": True, "id": existing.id, "status": existing.status, "already_applied": True}
+    application = JobApplication(job_id=job_id, registration_id=user.id, status="applied")
+    db.add(application)
+    db.commit()
+    db.refresh(application)
+    return {"ok": True, "id": application.id, "status": application.status, "already_applied": False}

@@ -43,6 +43,7 @@ class Registration(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     is_paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
 
     trades: Mapped[list["RegistrationTrade"]] = relationship(
         back_populates="registration", cascade="all, delete-orphan"
@@ -108,6 +109,46 @@ class Employer(Base):
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    rank_label: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+
+class LaborNotification(Base):
+    __tablename__ = "labor_notifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    body: Mapped[str] = mapped_column(Text, default="")
+    kind: Mapped[str] = mapped_column(String(40), default="alert")
+    is_read: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class LaborMessage(Base):
+    __tablename__ = "labor_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
+    peer_name: Mapped[str] = mapped_column(String(200), default="BUILD FORCES Support")
+    peer_role: Mapped[str] = mapped_column(String(40), default="support")
+    subject: Mapped[str] = mapped_column(String(200), default="")
+    body: Mapped[str] = mapped_column(Text)
+    direction: Mapped[str] = mapped_column(String(20), default="inbound")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class CompanyReview(Base):
+    __tablename__ = "company_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employer_id: Mapped[int] = mapped_column(ForeignKey("employers.id"), index=True)
+    author_name: Mapped[str] = mapped_column(String(200), default="Anonymous")
+    rating: Mapped[int] = mapped_column(Integer, default=5)
+    body: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
 class Job(Base):
@@ -146,6 +187,25 @@ class Job(Base):
         cascade="all, delete-orphan",
         order_by="JobAttachment.created_at",
     )
+    applications: Mapped[list["JobApplication"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    reviews: Mapped[list["JobReview"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    messages: Mapped[list["JobMessage"]] = relationship(
+        back_populates="job",
+        cascade="all, delete-orphan",
+    )
+    house_owner_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("house_owners.id"), nullable=True, index=True
+    )
+    project_status: Mapped[str] = mapped_column(String(30), default="posted")
+    timeline: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
+    cancel_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    house_owner: Mapped[Optional["HouseOwner"]] = relationship()
 
 
 class JobAttachment(Base):
@@ -191,6 +251,9 @@ class Course(Base):
     physical_location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     online_info: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     is_published: Mapped[bool] = mapped_column(Boolean, default=True)
+    instructor_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("instructors.id"), nullable=True, index=True
+    )
 
     sessions: Mapped[list["CourseSession"]] = relationship(
         back_populates="course", cascade="all, delete-orphan"
@@ -304,6 +367,8 @@ class Enrollment(Base):
     registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
     course_id: Mapped[int] = mapped_column(ForeignKey("courses.id"), index=True)
     status: Mapped[str] = mapped_column(String(30), default="purchased")  # purchased | pending
+    progress_pct: Mapped[int] = mapped_column(Integer, default=0)
+    grade: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     enrolled_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     course: Mapped["Course"] = relationship(back_populates="enrollments")
@@ -329,7 +394,53 @@ class HouseOwner(Base):
     full_name: Mapped[str] = mapped_column(String(200))
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     city: Mapped[str] = mapped_column(String(100), default="")
+    zip_code: Mapped[str] = mapped_column(String(20), default="")
     project_count: Mapped[int] = mapped_column(Integer, default=0)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+    __table_args__ = (UniqueConstraint("job_id", "registration_id", name="uq_job_application"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), index=True)
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="applied")
+    note: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    job: Mapped["Job"] = relationship(back_populates="applications")
+    registration: Mapped["Registration"] = relationship()
+
+
+class JobReview(Base):
+    __tablename__ = "job_reviews"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), index=True)
+    house_owner_id: Mapped[int] = mapped_column(ForeignKey("house_owners.id"), index=True)
+    registration_id: Mapped[int] = mapped_column(ForeignKey("registrations.id"), index=True)
+    rating_quality: Mapped[int] = mapped_column(Integer, default=5)
+    rating_punctuality: Mapped[int] = mapped_column(Integer, default=5)
+    rating_professionalism: Mapped[int] = mapped_column(Integer, default=5)
+    comment: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    job: Mapped["Job"] = relationship(back_populates="reviews")
+
+
+class JobMessage(Base):
+    __tablename__ = "job_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id"), index=True)
+    sender_role: Mapped[str] = mapped_column(String(20))
+    sender_id: Mapped[int] = mapped_column(Integer)
+    sender_name: Mapped[str] = mapped_column(String(200), default="")
+    body: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    job: Mapped["Job"] = relationship(back_populates="messages")
