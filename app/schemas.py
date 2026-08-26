@@ -378,6 +378,7 @@ class JobOut(BaseModel):
     project_status: Optional[str] = None
     timeline: Optional[str] = None
     cancel_reason: Optional[str] = None
+    contact_phone: Optional[str] = None
     applicant_count: int = 0
 
     class Config:
@@ -736,6 +737,7 @@ class HomeownerJobCreate(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     skills: List[str] = []
+    contact_phone: Optional[str] = Field(default=None, max_length=50)
 
 
 class HomeownerJobUpdate(BaseModel):
@@ -755,6 +757,7 @@ class HomeownerJobUpdate(BaseModel):
     skills: Optional[List[str]] = None
     project_status: Optional[str] = None
     cancel_reason: Optional[str] = None
+    contact_phone: Optional[str] = Field(default=None, max_length=50)
 
 
 class ApplicantOut(BaseModel):

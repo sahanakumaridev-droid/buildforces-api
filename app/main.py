@@ -49,6 +49,7 @@ def _ensure_auth_columns() -> None:
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS project_status VARCHAR(30) DEFAULT 'posted'",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS timeline VARCHAR(200)",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cancel_reason TEXT",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50)",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_id INTEGER",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS grade VARCHAR(40)",

@@ -205,6 +205,7 @@ class Job(Base):
     project_status: Mapped[str] = mapped_column(String(30), default="posted")
     timeline: Mapped[Optional[str]] = mapped_column(String(200), nullable=True)
     cancel_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    contact_phone: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     house_owner: Mapped[Optional["HouseOwner"]] = relationship()
 
 

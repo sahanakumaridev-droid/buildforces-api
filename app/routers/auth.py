@@ -472,3 +472,91 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
     record.used_at = datetime.utcnow()
     db.commit()
     return {"message": "Password updated. You can sign in with your new password."}
+
+
+@router.delete("/account")
+def delete_own_account(
+    user: AuthUserOut = Depends(get_current_auth_user),
+    db: Session = Depends(get_db),
+):
+    """Self-service account deletion for App Store / Play Store compliance (non-admin)."""
+    if user.role == "admin":
+        raise HTTPException(status_code=403, detail="Admin accounts cannot be deleted from the mobile app.")
+
+    if user.role == "labor":
+        member = db.query(Registration).filter(Registration.id == user.id).first()
+        if not member:
+            raise HTTPException(status_code=404, detail="Account not found.")
+        from app.models import (
+            CatalogAssignment,
+            Certificate,
+            Document,
+            Enrollment,
+            JobApplication,
+            LaborMessage,
+            LaborNotification,
+            RegistrationTrade,
+        )
+
+        db.query(LaborNotification).filter(LaborNotification.registration_id == member.id).delete()
+        db.query(LaborMessage).filter(LaborMessage.registration_id == member.id).delete()
+        db.query(PasswordResetToken).filter(PasswordResetToken.email == member.email).delete()
+        db.query(Enrollment).filter(Enrollment.registration_id == member.id).delete()
+        db.query(Certificate).filter(Certificate.registration_id == member.id).delete(synchronize_session=False)
+        try:
+            db.query(CatalogAssignment).filter(CatalogAssignment.registration_id == member.id).delete(
+                synchronize_session=False
+            )
+        except Exception:
+            pass
+        db.query(JobApplication).filter(JobApplication.registration_id == member.id).delete(
+            synchronize_session=False
+        )
+        db.query(Document).filter(Document.registration_id == member.id).delete(synchronize_session=False)
+        db.query(RegistrationTrade).filter(RegistrationTrade.registration_id == member.id).delete(
+            synchronize_session=False
+        )
+        db.delete(member)
+        db.commit()
+        return {"ok": True, "role": "labor"}
+
+    if user.role == "instructor":
+        row = db.query(Instructor).filter(Instructor.id == user.id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Account not found.")
+        row.is_active = False
+        db.query(PasswordResetToken).filter(PasswordResetToken.email == row.email).delete()
+        db.commit()
+        return {"ok": True, "role": "instructor"}
+
+    if user.role == "homeowner":
+        row = db.query(HouseOwner).filter(HouseOwner.id == user.id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Account not found.")
+        row.is_active = False
+        db.query(PasswordResetToken).filter(PasswordResetToken.email == row.email).delete()
+        db.commit()
+        return {"ok": True, "role": "homeowner"}
+
+    if user.role == "employer":
+        row = db.query(Employer).filter(Employer.id == user.id).first()
+        if not row:
+            raise HTTPException(status_code=404, detail="Account not found.")
+        # Soft-delete style: block + anonymize email so re-register is possible if needed.
+        stamp = int(datetime.utcnow().timestamp())
+        row.is_blocked = True
+        row.email = f"deleted+{row.id}.{stamp}@deleted.buildforces.local"
+        row.company_name = f"Deleted company {row.id}"
+        db.commit()
+        return {"ok": True, "role": "employer"}
+
+    raise HTTPException(status_code=400, detail="Unsupported account type.")
+
+
+@router.post("/apple")
+def apple_auth_stub():
+    """Apple Sign In is wired for mobile; enable after Apple Services ID + GOOGLE-style secret setup."""
+    raise HTTPException(
+        status_code=501,
+        detail="Apple Sign In is not fully configured on the server yet. Use email login for now.",
+    )

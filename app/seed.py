@@ -141,6 +141,7 @@ def ensure_schema_columns():
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS project_status VARCHAR(30) DEFAULT 'posted'",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS timeline VARCHAR(200)",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cancel_reason TEXT",
+        "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50)",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_id INTEGER",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS grade VARCHAR(40)",
@@ -368,6 +369,20 @@ JOBS = [
          pay_min=20.41, pay_max=24.75, employment_type="Full-time", min_experience_years=0,
          summary="Two-year paid apprenticeship learning to install, maintain, and repair water distribution, wastewater collection, and storm drainage systems.",
          apply_url="https://www.governmentjobs.com/careers/saccity/jobs/3513968"),
+    dict(title="Journey Electrician — Residential & Light Commercial", agency="Pacific Crest Electric",
+         trade_category="electrical",
+         skills="Residential Electrician,Panel Upgrade,Troubleshooting",
+         city="Sacramento", zip_code="95814",
+         pay_min=38.00, pay_max=48.00, employment_type="Full-time", min_experience_years=2,
+         summary="Install and service residential and light-commercial electrical systems — panels, circuits, lighting, and troubleshooting.",
+         apply_url="https://www.buildforces.com/jobs/electrician"),
+    dict(title="Apprentice Plumber / Pipefitter", agency="Capital Valley Plumbing Co.",
+         trade_category="plumbing",
+         skills="Apprentice Plumber,Pipe Fitting,Fixture Install",
+         city="Sacramento", zip_code="95814",
+         pay_min=22.00, pay_max=28.00, employment_type="Full-time", min_experience_years=0,
+         summary="Learn plumbing on real jobsites — fixtures, drains, and supply lines — with paid apprenticeship support.",
+         apply_url="https://www.buildforces.com/jobs/plumber-apprentice"),
 ]
 
 

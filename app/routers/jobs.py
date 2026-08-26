@@ -77,6 +77,7 @@ def _job_to_out(job: Job, match_score: Optional[float] = None, matched_skills: O
         project_status=getattr(job, "project_status", None),
         timeline=getattr(job, "timeline", None),
         cancel_reason=getattr(job, "cancel_reason", None),
+        contact_phone=getattr(job, "contact_phone", None),
         applicant_count=len(getattr(job, "applications", None) or []),
     )
 

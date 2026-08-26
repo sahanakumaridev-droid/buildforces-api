@@ -124,6 +124,7 @@ def create_job(
         apply_url="",
         house_owner_id=owner.id,
         project_status="posted",
+        contact_phone=(payload.contact_phone or "").strip() or None,
     )
     db.add(job)
     owner.project_count = (owner.project_count or 0) + 1
