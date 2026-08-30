@@ -5,11 +5,43 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Course, CourseSession, Enrollment, Registration
+from app.models import CatalogAssignment, Course, CourseSession, Enrollment, Registration
 from app.schemas import CourseContentOut, CourseModuleOut, CourseOut, CourseSessionOut, EnrollmentOut
 from app.security import decode_auth_token
 
+try:
+    from app.models import CatalogMedia
+except ImportError:  # production image may predate CatalogMedia
+    CatalogMedia = None  # type: ignore
+
 router = APIRouter(prefix="/api/courses", tags=["courses"])
+
+
+def parse_course_id(course_id: str) -> Optional[int]:
+    raw = (course_id or "").strip()
+    lowered = raw.lower()
+    if lowered.startswith("course-"):
+        raw = raw.split("-", 1)[1]
+    if raw.isdigit():
+        return int(raw)
+    return None
+
+
+def resolve_course(db: Session, course_id: str) -> Optional[Course]:
+    numeric = parse_course_id(course_id)
+    if numeric is not None:
+        return db.query(Course).filter(Course.id == numeric).first()
+    slug = (course_id or "").strip()
+    title = None
+    if CatalogMedia is not None:
+        media = db.query(CatalogMedia).filter(CatalogMedia.slug == slug).first()
+        title = media.title if media else None
+    if not title:
+        assignment = db.query(CatalogAssignment).filter(CatalogAssignment.slug == slug).first()
+        title = assignment.title if assignment else None
+    if not title:
+        return None
+    return db.query(Course).filter(Course.title.ilike(title.strip())).first()
 
 
 def _optional_member_id(authorization: str = Header(default="")) -> Optional[int]:
@@ -201,11 +233,11 @@ def my_enrollments(
 
 @router.get("/{course_id}", response_model=CourseOut)
 def get_course(
-    course_id: int,
+    course_id: str,
     db: Session = Depends(get_db),
     member_id: Optional[int] = Depends(_optional_member_id),
 ):
-    course = db.query(Course).filter(Course.id == course_id).first()
+    course = resolve_course(db, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found.")
     purchased = False
@@ -214,22 +246,38 @@ def get_course(
             db.query(Enrollment)
             .filter(
                 Enrollment.registration_id == member_id,
-                Enrollment.course_id == course_id,
+                Enrollment.course_id == course.id,
                 Enrollment.status == "purchased",
             )
             .first()
             is not None
         )
-    return _course_to_out(course, purchased=purchased, include_modules=True)
+    if not purchased and member_id:
+        slug = (course_id or "").strip()
+        assigned = (
+            db.query(CatalogAssignment)
+            .filter(
+                CatalogAssignment.slug == slug,
+                CatalogAssignment.registration_id == member_id,
+            )
+            .first()
+        )
+        purchased = assigned is not None
+    out = _course_to_out(course, purchased=purchased, include_modules=True)
+    if CatalogMedia is not None:
+        media = db.query(CatalogMedia).filter(CatalogMedia.slug == (course_id or "").strip()).first()
+        if media and media.video_url:
+            out.video_url = media.video_url
+    return out
 
 
 @router.post("/{course_id}/enroll", response_model=EnrollmentOut)
 def enroll_course(
-    course_id: int,
+    course_id: str,
     registration: Registration = Depends(_require_member),
     db: Session = Depends(get_db),
 ):
-    course = db.query(Course).filter(Course.id == course_id).first()
+    course = resolve_course(db, course_id)
     if not course:
         raise HTTPException(status_code=404, detail="Course not found.")
 
@@ -237,7 +285,7 @@ def enroll_course(
         db.query(Enrollment)
         .filter(
             Enrollment.registration_id == registration.id,
-            Enrollment.course_id == course_id,
+            Enrollment.course_id == course.id,
         )
         .first()
     )
@@ -255,7 +303,7 @@ def enroll_course(
 
     enrollment = Enrollment(
         registration_id=registration.id,
-        course_id=course_id,
+        course_id=course.id,
         status="purchased",
     )
     db.add(enrollment)

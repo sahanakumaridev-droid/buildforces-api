@@ -50,12 +50,16 @@ def _ensure_auth_columns() -> None:
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS timeline VARCHAR(200)",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cancel_reason TEXT",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50)",
+        "ALTER TABLE certificates ADD COLUMN IF NOT EXISTS verification_code VARCHAR(64)",
+        "ALTER TABLE certificates ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_id INTEGER",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS grade VARCHAR(40)",
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE",
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS rank_label VARCHAR(50)",
+        "ALTER TABLE catalog_assignments ADD COLUMN IF NOT EXISTS video_url VARCHAR(2000)",
+        "ALTER TABLE catalog_assignments ADD COLUMN IF NOT EXISTS lesson_youtube_ids TEXT",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -153,6 +157,44 @@ def _ensure_paid_demo_labor() -> None:
 
 
 _ensure_paid_demo_labor()
+
+
+def _ensure_demo_employers() -> None:
+    """Keep company-portal demo logins unblocked so QA and the mobile APK can sign in."""
+    from app.database import SessionLocal
+    from app.models import Employer
+    from app.security import hash_password
+
+    accounts = [
+        ("crew@baycivil.demo", "Bay Area Civil Works"),
+        ("hiring@pacificcrest.demo", "Pacific Crest Builders"),
+        ("company@buildforces.com", "Build Forces Demo Co"),
+        ("mobile.company@buildforces.com", "Pacific Crest Builders"),
+    ]
+    db = SessionLocal()
+    try:
+        for email, company_name in accounts:
+            row = db.query(Employer).filter(Employer.email == email).first()
+            if not row:
+                db.add(
+                    Employer(
+                        company_name=company_name,
+                        email=email,
+                        password_hash=hash_password("Employer123!"),
+                        is_blocked=False,
+                    )
+                )
+            else:
+                row.password_hash = hash_password("Employer123!")
+                row.is_blocked = False
+                if not row.company_name:
+                    row.company_name = company_name
+        db.commit()
+    finally:
+        db.close()
+
+
+_ensure_demo_employers()
 
 app = FastAPI(title="Buildforces API")
 

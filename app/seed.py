@@ -142,12 +142,16 @@ def ensure_schema_columns():
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS timeline VARCHAR(200)",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cancel_reason TEXT",
         "ALTER TABLE jobs ADD COLUMN IF NOT EXISTS contact_phone VARCHAR(50)",
+        "ALTER TABLE certificates ADD COLUMN IF NOT EXISTS verification_code VARCHAR(64)",
+        "ALTER TABLE certificates ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
         "ALTER TABLE courses ADD COLUMN IF NOT EXISTS instructor_id INTEGER",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS progress_pct INTEGER DEFAULT 0",
         "ALTER TABLE enrollments ADD COLUMN IF NOT EXISTS grade VARCHAR(40)",
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT FALSE",
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS rank_label VARCHAR(50)",
+        "ALTER TABLE catalog_assignments ADD COLUMN IF NOT EXISTS video_url VARCHAR(2000)",
+        "ALTER TABLE catalog_assignments ADD COLUMN IF NOT EXISTS lesson_youtube_ids TEXT",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -498,6 +502,39 @@ def seed():
             )
             print("Seeded sample employers.")
 
+        demo_company = db.query(Employer).filter(Employer.email == "company@buildforces.com").first()
+        if not demo_company:
+            db.add(
+                Employer(
+                    company_name="Build Forces Demo Co",
+                    email="company@buildforces.com",
+                    password_hash=hash_password("Employer123!"),
+                )
+            )
+            print("Seeded demo company login (company@buildforces.com / Employer123!).")
+        else:
+            demo_company.password_hash = hash_password("Employer123!")
+            print("Ensured demo company login (company@buildforces.com / Employer123!).")
+
+        pacific = db.query(Employer).filter(Employer.email == "hiring@pacificcrest.demo").first()
+        if pacific:
+            pacific.password_hash = hash_password("Employer123!")
+            pacific.is_blocked = False
+
+        bay = db.query(Employer).filter(Employer.email == "crew@baycivil.demo").first()
+        if not bay:
+            db.add(
+                Employer(
+                    company_name="Bay Area Civil Works",
+                    email="crew@baycivil.demo",
+                    password_hash=hash_password("Employer123!"),
+                    is_blocked=False,
+                )
+            )
+        else:
+            bay.password_hash = hash_password("Employer123!")
+            bay.is_blocked = False
+
         demo_labor_email = "sahanakumari@buildforce.com"
         demo_labor_password = "Labor123!"
         demo_labor = db.query(Registration).filter(Registration.email == demo_labor_email).first()
@@ -524,6 +561,7 @@ def seed():
             db.add(demo_labor)
             print(f"Seeded demo labor ({demo_labor_email} / {demo_labor_password}, is_paid=True).")
         else:
+            demo_labor.full_name = "Sahana Kumari"
             demo_labor.password_hash = hash_password(demo_labor_password)
             demo_labor.is_paid = True
             demo_labor.is_blocked = False

@@ -117,6 +117,8 @@ def _certificate_out(row: Certificate) -> CertificateOut:
         notes=row.notes,
         uploaded_by_admin_id=row.uploaded_by_admin_id,
         uploaded_at=row.uploaded_at,
+        verification_code=getattr(row, "verification_code", None),
+        expires_at=getattr(row, "expires_at", None),
     )
 
 
@@ -907,22 +909,54 @@ def admin_generate_certificate(
         raise HTTPException(status_code=404, detail="Member not found.")
 
     cert_title = (payload.title or f"{course.title} Certificate").strip()
+    issued = datetime.utcnow()
+    expires = issued.replace(year=issued.year + 2)
+    code = f"BF-{uuid.uuid4().hex[:8].upper()}"
+    verify_url = f"https://buildforces.com/verify/certificate/{code}"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=140x140&margin=8&data={verify_url}"
     html = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>{cert_title}</title>
 <style>
-body{{font-family:Georgia,serif;margin:0;padding:48px;background:#f8f7fc;color:#0f172a}}
-.card{{max-width:720px;margin:0 auto;background:#fff;border:2px solid #7c3aed;border-radius:16px;padding:48px;text-align:center}}
-h1{{font-size:28px;margin:0 0 8px}} .brand{{color:#7c3aed;letter-spacing:.12em;font-size:12px;font-weight:700}}
-.name{{font-size:32px;margin:24px 0 8px}} .meta{{color:#64748b;font-size:14px}}
-</style></head><body><div class="card">
-<p class="brand">BUILD FORCES</p>
+body{{font-family:Georgia,'Times New Roman',serif;margin:0;padding:40px;background:#f3f1f8;color:#131a34}}
+.card{{max-width:820px;margin:0 auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 30px 60px -36px rgba(15,23,42,.4);border:1px solid #e9e2f8}}
+.bar{{height:8px;background:linear-gradient(90deg,#7c3aed,#a78bfa,#7dd3fc)}}
+.pad{{padding:40px 48px}}
+.brand{{color:#7c3aed;letter-spacing:.18em;font-size:11px;font-weight:700;text-transform:uppercase}}
+h1{{font-size:30px;margin:10px 0 6px;font-family:system-ui,sans-serif}}
+.sub{{color:#64748b;font-size:14px;margin:0}}
+.grid{{display:grid;grid-template-columns:1fr auto;gap:28px;align-items:center;margin-top:28px}}
+.name{{font-size:34px;margin:10px 0;font-weight:700}}
+.meta{{color:#64748b;font-size:14px}}
+.course{{font-size:20px;font-weight:700;margin:8px 0 18px}}
+.dates{{display:grid;grid-template-columns:1fr 1fr;gap:12px}}
+.dates div{{background:#f7f5fb;border-radius:12px;padding:12px 14px}}
+.dates span{{display:block;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:#7c3aed;font-weight:700}}
+.qr{{text-align:center;background:#f7f5fb;border-radius:16px;padding:14px;border:1px solid #ede7fa}}
+.qr img{{display:block;margin:0 auto}}
+.qr p{{margin:10px 0 0;font-size:11px;color:#7c3aed;font-weight:700}}
+.code{{margin-top:18px;font-family:ui-monospace,monospace;font-size:13px;color:#475569}}
+</style></head><body><div class="card"><div class="bar"></div><div class="pad">
+<p class="brand">Build Forces</p>
 <h1>Certificate of Completion</h1>
+<p class="sub">America's #1 Construction Workforce Platform</p>
+<div class="grid">
+<div>
 <p class="meta">This certifies that</p>
 <p class="name">{member.full_name}</p>
-<p class="meta">has completed</p>
-<p style="font-size:20px;font-weight:700;margin:12px 0">{course.title}</p>
-<p class="meta">Issued {datetime.utcnow().strftime("%B %d, %Y")}</p>
-</div></body></html>"""
+<p class="meta">has successfully completed</p>
+<p class="course">{course.title}</p>
+<div class="dates">
+<div><span>Issued</span>{issued.strftime("%B %d, %Y")}</div>
+<div><span>Expires</span>{expires.strftime("%B %d, %Y")}</div>
+</div>
+<p class="code">ID {code}</p>
+</div>
+<div class="qr">
+<img src="{qr_url}" width="140" height="140" alt="Verification QR"/>
+<p>Scan to verify</p>
+</div>
+</div>
+</div></div></body></html>"""
 
     upload_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "uploads", "certificates"))
     os.makedirs(upload_root, exist_ok=True)
@@ -941,6 +975,8 @@ h1{{font-size:28px;margin:0 0 8px}} .brand{{color:#7c3aed;letter-spacing:.12em;f
         file_url=file_url,
         notes=payload.notes,
         uploaded_by_admin_id=admin.id,
+        verification_code=code,
+        expires_at=expires,
     )
     db.add(row)
     db.commit()

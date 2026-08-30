@@ -327,6 +327,8 @@ class Certificate(Base):
         ForeignKey("admins.id"), nullable=True
     )
     uploaded_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    verification_code: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True, index=True)
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
 
     course: Mapped["Course"] = relationship(back_populates="certificates")
     registration: Mapped[Optional["Registration"]] = relationship()
@@ -346,6 +348,18 @@ class CourseSession(Base):
     course: Mapped["Course"] = relationship(back_populates="sessions")
 
 
+class CatalogMedia(Base):
+    """Admin catalog clip posted on the website — source of truth for the mobile app."""
+
+    __tablename__ = "catalog_media"
+
+    slug: Mapped[str] = mapped_column(String(200), primary_key=True)
+    title: Mapped[str] = mapped_column(String(255))
+    image: Mapped[str] = mapped_column(String(500), default="")
+    video_url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+    lesson_youtube_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+
 class CatalogAssignment(Base):
     __tablename__ = "catalog_assignments"
     __table_args__ = (UniqueConstraint("slug", "member_email", name="uq_catalog_assign_slug_email"),)
@@ -354,6 +368,8 @@ class CatalogAssignment(Base):
     slug: Mapped[str] = mapped_column(String(200), index=True)
     title: Mapped[str] = mapped_column(String(255))
     image: Mapped[str] = mapped_column(String(500), default="")
+    video_url: Mapped[Optional[str]] = mapped_column(String(2000), nullable=True)
+    lesson_youtube_ids: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     member_email: Mapped[str] = mapped_column(String(255), index=True)
     registration_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("registrations.id"), nullable=True, index=True

@@ -12,6 +12,7 @@ from app.schemas import (
     AuthLogin,
     AuthResponse,
     AuthUserOut,
+    DemoOtpLogin,
     ForgotPasswordRequest,
     ForgotPasswordResponse,
     GoogleAuthRequest,
@@ -23,6 +24,7 @@ from app.schemas import (
 from app.google_auth import fetch_google_profile, google_client_id
 from app.security import (
     create_auth_token,
+    create_employer_token,
     decode_auth_token,
     hash_password,
     verify_password,
@@ -276,6 +278,110 @@ def login(payload: AuthLogin, db: Session = Depends(get_db)):
         )
 
     raise HTTPException(status_code=401, detail="Invalid email or password.")
+
+
+DEMO_OTP_CODE = "123456"
+DEMO_OTP_PASSWORD = "Otp123456!"
+
+
+def _digits(value: str) -> str:
+    return "".join(ch for ch in value if ch.isdigit())
+
+
+@router.post("/otp-login", response_model=AuthResponse)
+def otp_login(payload: DemoOtpLogin, db: Session = Depends(get_db)):
+    """Demo phone login: code 123456 upserts an account. Password login is unchanged."""
+    digits = _digits(payload.phone)
+    if len(digits) < 6:
+        raise HTTPException(status_code=400, detail="Enter a valid mobile number.")
+    if payload.code.strip() != DEMO_OTP_CODE:
+        raise HTTPException(status_code=401, detail="Invalid code.")
+
+    role = payload.role.lower().strip()
+    if role in {"company", "company_admin"}:
+        role = "employer"
+    email = f"otp.{digits}@demo.buildforces.com"
+    name = "Sahana Kumari"
+    password_hash = hash_password(DEMO_OTP_PASSWORD)
+
+    if role == "instructor":
+        row = db.query(Instructor).filter(Instructor.email == email).first()
+        if row is None:
+            row = Instructor(
+                full_name=name,
+                email=email,
+                specialty="Jobsite training",
+                city="Fresno",
+                password_hash=password_hash,
+                is_active=True,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+        user = _instructor_user(row)
+        return AuthResponse(token=create_auth_token(row.id, "instructor"), role="instructor", user=user)
+
+    if role == "homeowner":
+        row = db.query(HouseOwner).filter(HouseOwner.email == email).first()
+        if row is None:
+            row = HouseOwner(
+                full_name=name,
+                email=email,
+                city="Fresno",
+                zip_code="93721",
+                password_hash=password_hash,
+                is_active=True,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+        user = _homeowner_user(row)
+        return AuthResponse(token=create_auth_token(row.id, "homeowner"), role="homeowner", user=user)
+
+    if role == "employer":
+        row = db.query(Employer).filter(Employer.email == email).first()
+        if row is None:
+            row = Employer(
+                company_name=name,
+                email=email,
+                password_hash=password_hash,
+                is_blocked=False,
+            )
+            db.add(row)
+            db.commit()
+            db.refresh(row)
+        user = AuthUserOut(id=row.id, full_name=row.company_name, email=row.email, role="employer")
+        return AuthResponse(token=create_employer_token(row.id), role="employer", user=user)
+
+    existing = db.query(Registration).filter(Registration.email == email).first()
+    if existing is None:
+        existing = Registration(
+            full_name=name,
+            email=email,
+            phone=digits,
+            password_hash=password_hash,
+            language="en",
+            zip_code="93721",
+            state="CA",
+            county="Fresno",
+            skill_level="skilled",
+            experience="1-3",
+            work_authorized=True,
+            agreed_to_terms=True,
+            is_paid=True,
+            is_blocked=False,
+        )
+        db.add(existing)
+    else:
+        if (existing.full_name or "").lower().startswith("ramesh"):
+            existing.full_name = name
+        existing.phone = digits
+        existing.last_login_at = datetime.utcnow()
+        existing.is_blocked = False
+    db.commit()
+    db.refresh(existing)
+    user = _labor_user(existing)
+    return AuthResponse(token=create_auth_token(existing.id, "labor"), role="labor", user=user)
 
 
 @router.post("/admin/register", response_model=AuthResponse)

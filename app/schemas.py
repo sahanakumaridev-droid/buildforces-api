@@ -183,6 +183,12 @@ class AdminOut(BaseModel):
         from_attributes = True
 
 
+class DemoOtpLogin(BaseModel):
+    phone: str
+    code: str
+    role: str = "labor"
+
+
 class AuthLogin(BaseModel):
     email: EmailStr
     password: str
@@ -611,6 +617,8 @@ class CertificateOut(BaseModel):
     notes: Optional[str] = None
     uploaded_by_admin_id: Optional[int] = None
     uploaded_at: datetime
+    verification_code: Optional[str] = None
+    expires_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
