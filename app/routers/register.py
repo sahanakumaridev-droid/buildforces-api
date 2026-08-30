@@ -39,6 +39,7 @@ def create_registration(payload: RegistrationCreate, db: Session = Depends(get_d
         experience=payload.experience,
         work_authorized=payload.work_authorized,
         agreed_to_terms=payload.agreed_to_terms,
+        is_paid=False,
     )
     registration.trades = [
         RegistrationTrade(category=t.category, trade_name=t.trade_name) for t in payload.trades

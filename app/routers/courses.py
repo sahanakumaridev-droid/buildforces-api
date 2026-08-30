@@ -215,7 +215,10 @@ def my_enrollments(
 ):
     rows = (
         db.query(Enrollment)
-        .filter(Enrollment.registration_id == registration.id)
+        .filter(
+            Enrollment.registration_id == registration.id,
+            Enrollment.status == "purchased",
+        )
         .order_by(Enrollment.enrolled_at.desc())
         .all()
     )
@@ -291,6 +294,8 @@ def enroll_course(
     )
     if existing:
         existing.status = "purchased"
+        if float(course.fee or 0) > 0:
+            registration.is_paid = True
         db.commit()
         db.refresh(existing)
         return EnrollmentOut(
@@ -306,6 +311,8 @@ def enroll_course(
         course_id=course.id,
         status="purchased",
     )
+    if float(course.fee or 0) > 0:
+        registration.is_paid = True
     db.add(enrollment)
     db.commit()
     db.refresh(enrollment)

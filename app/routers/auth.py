@@ -210,6 +210,7 @@ def google_auth(payload: GoogleAuthRequest, db: Session = Depends(get_db)):
         experience=payload.experience,
         work_authorized=True,
         agreed_to_terms=True,
+        is_paid=False,
     )
     registration.trades = [
         RegistrationTrade(category=item.category, trade_name=item.trade_name) for item in payload.trades
@@ -368,7 +369,7 @@ def otp_login(payload: DemoOtpLogin, db: Session = Depends(get_db)):
             experience="1-3",
             work_authorized=True,
             agreed_to_terms=True,
-            is_paid=True,
+            is_paid=False,
             is_blocked=False,
         )
         db.add(existing)
