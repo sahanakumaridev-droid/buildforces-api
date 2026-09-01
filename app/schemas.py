@@ -854,3 +854,49 @@ class InstructorOverviewOut(BaseModel):
 class GradeIn(BaseModel):
     grade: str = Field(min_length=1, max_length=40)
     progress_pct: Optional[int] = Field(default=None, ge=0, le=100)
+
+
+class AiRelatedOut(BaseModel):
+    id: int
+    question: str
+    answer: str
+    score: float
+
+
+class AiTurnOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    related: List[AiRelatedOut] = []
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AiSessionOut(BaseModel):
+    id: int
+    guest_key: str
+    status: str
+    started_at: datetime
+    ended_at: Optional[datetime] = None
+    turns: List[AiTurnOut] = []
+
+    class Config:
+        from_attributes = True
+
+
+class AiCallStartIn(BaseModel):
+    guest_key: Optional[str] = None
+
+
+class AiCallTurnIn(BaseModel):
+    guest_key: str = Field(min_length=8, max_length=64)
+    session_id: Optional[int] = None
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class AiCallTurnResponse(BaseModel):
+    session: AiSessionOut
+    reply: str
+    related: List[AiRelatedOut] = []

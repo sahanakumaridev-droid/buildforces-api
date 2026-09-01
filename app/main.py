@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy import text
 
 from app.database import Base, engine
-from app.routers import admin, admin_manage, auth, catalog, contact, courses, documents, employers, geo, homeowner, instructor, jobs, labor_inbox, register
+from app.routers import admin, admin_manage, ai_call, auth, catalog, contact, courses, documents, employers, geo, homeowner, instructor, jobs, labor_inbox, register
 
 load_dotenv()
 
@@ -60,6 +60,9 @@ def _ensure_auth_columns() -> None:
         "ALTER TABLE employers ADD COLUMN IF NOT EXISTS rank_label VARCHAR(50)",
         "ALTER TABLE catalog_assignments ADD COLUMN IF NOT EXISTS video_url VARCHAR(2000)",
         "ALTER TABLE catalog_assignments ADD COLUMN IF NOT EXISTS lesson_youtube_ids TEXT",
+        "ALTER TABLE ai_call_sessions DROP CONSTRAINT IF EXISTS ai_call_sessions_guest_key_key",
+        "DROP INDEX IF EXISTS ix_ai_call_sessions_guest_key",
+        "CREATE INDEX IF NOT EXISTS ix_ai_call_sessions_guest_key ON ai_call_sessions (guest_key)",
     ]
     with engine.begin() as conn:
         for statement in statements:
@@ -213,6 +216,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=UPLOAD_DIR), name="uploads")
 
 app.include_router(auth.router)
+app.include_router(ai_call.router)
 app.include_router(admin.router)
 app.include_router(admin_manage.router)
 app.include_router(labor_inbox.router)

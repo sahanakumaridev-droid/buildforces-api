@@ -461,3 +461,45 @@ class JobMessage(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     job: Mapped["Job"] = relationship(back_populates="messages")
+
+
+class AiCallSession(Base):
+    __tablename__ = "ai_call_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    guest_key: Mapped[str] = mapped_column(String(64), index=True)
+    registration_id: Mapped[Optional[int]] = mapped_column(ForeignKey("registrations.id"), nullable=True, index=True)
+    user_role: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    turns: Mapped[list["AiCallTurn"]] = relationship(
+        back_populates="session", cascade="all, delete-orphan"
+    )
+
+
+class AiCallTurn(Base):
+    __tablename__ = "ai_call_turns"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("ai_call_sessions.id"), index=True)
+    role: Mapped[str] = mapped_column(String(20))  # user | assistant
+    content: Mapped[str] = mapped_column(Text)
+    related_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    session: Mapped["AiCallSession"] = relationship(back_populates="turns")
+
+
+class AiStoredPair(Base):
+    """Stored Q&A used to answer related follow-up queries."""
+
+    __tablename__ = "ai_stored_pairs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    question: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    source: Mapped[str] = mapped_column(String(40), default="call")
+    session_id: Mapped[Optional[int]] = mapped_column(ForeignKey("ai_call_sessions.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
